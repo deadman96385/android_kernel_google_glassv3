@@ -455,7 +455,6 @@ void dsi_ctrl_hw_cmn_video_engine_setup(struct dsi_ctrl_hw *ctrl,
 	/* Disable Timing double buffering */
 	DSI_W32(ctrl, DSI_DSI_TIMING_DB_MODE, 0x0);
 
-
 	pr_debug("[DSI_%d] Video engine setup done\n", ctrl->index);
 }
 
@@ -1490,4 +1489,17 @@ int dsi_ctrl_hw_cmn_wait_for_cmd_mode_mdp_idle(struct dsi_ctrl_hw *ctrl)
 		pr_err("%s: timed out waiting for idle\n", __func__);
 
 	return rc;
+}
+
+void dsi_ctrl_hw_cmn_set_continuous_clk(struct dsi_ctrl_hw *ctrl, bool enable)
+{
+	u32 reg = 0;
+
+	reg = DSI_R32(ctrl, DSI_LANE_CTRL);
+	if (enable)
+		reg |= BIT(28);
+	else
+		reg &= ~BIT(28);
+	DSI_W32(ctrl, DSI_LANE_CTRL, reg);
+	wmb(); /* make sure request is set */
 }
