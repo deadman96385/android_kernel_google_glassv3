@@ -560,7 +560,7 @@
 			alloc-ranges = <0 0x00000000 0 0xffffffff>;
 			reusable;
 			alignment = <0 0x400000>;
-			size = <0 0xc00000>;
+			size = <0 0x12c00000>;
 		};
 
 		qseecom_ta_mem: qseecom_ta_region {
@@ -849,13 +849,13 @@
 			 <&apps_smmu 0x714 0x1>;
 	};
 
-	qcom,qbt1000 {
+	/* qcom,qbt1000 {
 		compatible = "qcom,qbt1000";
 		clock-names = "core", "iface";
 		clock-frequency = <25000000>;
 		qcom,ipc-gpio = <&tlmm 121 0>;
 		qcom,finger-detect-gpio = <&tlmm 122 0>;
-	};
+	}; */
 
 	qcom_seecom: qseecom@86d00000 {
 		compatible = "qcom,qseecom";
@@ -2461,7 +2461,6 @@
 	qcom,msm-adsprpc-mem {
 		compatible = "qcom,msm-adsprpc-mem-region";
 		memory-region = <&adsp_mem>;
-		restrict-access;
 	};
 
 	qcom,msm_fastrpc {
@@ -2592,6 +2591,7 @@
 		qcom,gpio-force-fatal-error = <&smp2pgpio_wlan_1_in 0 0>;
 		qcom,gpio-early-crash-ind = <&smp2pgpio_wlan_1_in 1 0>;
 		qcom,smmu-s1-bypass;
+		#cooling-cells = <2>;
 	};
 
 	cpubw: qcom,cpubw {
