@@ -25,6 +25,9 @@
 #include <sound/jack.h>
 #include <sound/core.h>
 #include <sound/control.h>
+#include <linux/debugfs.h>
+
+#define JACK_DIR_NAME_SIZE 128
 
 struct snd_jack_kctl {
 	struct snd_kcontrol *kctl;
@@ -46,6 +49,35 @@ static int jack_switch_types[] = {
 	SW_MICROPHONE2_INSERT,
 };
 #endif /* CONFIG_SND_JACK_INPUT_DEV */
+
+#ifdef CONFIG_DEBUG_FS
+static void jack_init_debugfs(struct snd_jack *jack)
+{
+	char jack_dir_name[JACK_DIR_NAME_SIZE];
+
+	snprintf(jack_dir_name, JACK_DIR_NAME_SIZE, "jack-%s-%s",
+			jack->id, jack->name);
+
+	jack->debugfs_jack = debugfs_create_dir( jack_dir_name, 0);
+	jack->debugfs_jack_status =
+		debugfs_create_u32("status", 0444, jack->debugfs_jack,
+				&jack->status);
+}
+
+static void jack_cleanup_debugfs(struct snd_jack *jack)
+{
+	debugfs_remove(jack->debugfs_jack_status);
+	debugfs_remove_recursive(jack->debugfs_jack);
+}
+#else
+static void jack_init_debugfs(struct snd_jack *jack)
+{
+}
+
+static void jack_cleanup_debugfs(struct snd_jack *jack)
+{
+}
+#endif
 
 static int snd_jack_dev_disconnect(struct snd_device *device)
 {
@@ -76,6 +108,9 @@ static int snd_jack_dev_free(struct snd_device *device)
 		list_del_init(&jack_kctl->list);
 		snd_ctl_remove(card, jack_kctl->kctl);
 	}
+
+	jack_cleanup_debugfs(jack);
+
 	if (jack->private_free)
 		jack->private_free(jack);
 
@@ -122,6 +157,8 @@ static int snd_jack_dev_register(struct snd_device *device)
 	err = input_register_device(jack->input_dev);
 	if (err == 0)
 		jack->registered = 1;
+
+	jack_init_debugfs(jack);
 
 	return err;
 }
@@ -388,6 +425,10 @@ void snd_jack_report(struct snd_jack *jack, int status)
 					    jack_switch_types[i],
 					    status & testbit);
 	}
+
+#ifdef CONFIG_DEBUG_FS
+	jack->status = status;
+#endif
 
 	input_sync(jack->input_dev);
 #endif /* CONFIG_SND_JACK_INPUT_DEV */
