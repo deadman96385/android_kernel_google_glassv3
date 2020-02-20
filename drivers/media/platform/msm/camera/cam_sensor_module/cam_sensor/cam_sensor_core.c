@@ -17,6 +17,8 @@
 #include "cam_soc_util.h"
 #include "cam_trace.h"
 
+extern void set_led_green(int brightness);
+
 static void cam_sensor_update_req_mgr(
 	struct cam_sensor_ctrl_t *s_ctrl,
 	struct cam_packet *csl_packet)
@@ -643,7 +645,6 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 			s_ctrl->soc_info.index,
 			s_ctrl->sensordata->slave_info.sensor_slave_addr,
 			s_ctrl->sensordata->slave_info.sensor_id);
-
 		rc = cam_sensor_power_down(s_ctrl);
 		if (rc < 0) {
 			CAM_ERR(CAM_SENSOR, "fail in Sensor Power Down");
@@ -795,6 +796,9 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 			"CAM_START_DEV Success, sensor_id:0x%x,sensor_slave_addr:0x%x",
 			s_ctrl->sensordata->slave_info.sensor_id,
 			s_ctrl->sensordata->slave_info.sensor_slave_addr);
+			//QCI Terry, turn on led while opening camera - S
+			set_led_green(50);
+			//QCI Terry, turn on led while opening camera - S
 	}
 		break;
 	case CAM_STOP_DEV: {
@@ -822,6 +826,9 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 			"CAM_STOP_DEV Success, sensor_id:0x%x,sensor_slave_addr:0x%x",
 			s_ctrl->sensordata->slave_info.sensor_id,
 			s_ctrl->sensordata->slave_info.sensor_slave_addr);
+			//QCI Terry, turn off led after close camera - S
+			set_led_green(0);
+			//QCI Terry, turn off led after close camera - E
 	}
 		break;
 	case CAM_CONFIG_DEV: {
