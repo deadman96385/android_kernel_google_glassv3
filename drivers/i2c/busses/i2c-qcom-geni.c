@@ -675,7 +675,7 @@ static int geni_i2c_xfer(struct i2c_adapter *adap,
 
 		gi2c->cur = &msgs[i];
 		qcom_geni_i2c_calc_timeout(gi2c);
-		mode = msgs[i].len > 32 ? SE_DMA : FIFO_MODE;
+		mode = msgs[i].len > 2048 ? SE_DMA : FIFO_MODE;
 		ret = geni_se_select_mode(gi2c->base, mode);
 		if (ret) {
 			dev_err(gi2c->dev, "%s: Error mode init %d:%d:%d\n",
