@@ -240,6 +240,20 @@ void dsi_ctrl_hw_cmn_set_timing_db(struct dsi_ctrl_hw *ctrl,
 	SDE_EVT32(ctrl->index, enable);
 }
 
+static u32 dsi_ctrl_calc_hs_timeout(struct dsi_mode_info *mode)
+{
+	/* assume the longest HS transfer is one frame time */
+	u32 esc_clk_rate = 19200000;
+	u32 esc_ticks_per_frame = (esc_clk_rate + mode->refresh_rate - 1) /
+	mode->refresh_rate;
+	u32 hs_timeout_h = 0, hs_timeout_l;
+
+	while ((hs_timeout_l = (esc_ticks_per_frame >> hs_timeout_h)) > 65536)
+	hs_timeout_h++;
+
+	return (hs_timeout_h << 16) | hs_timeout_l;
+}
+
 /**
  * set_video_timing() - set up the timing for video frame
  * @ctrl:          Pointer to controller host hardware.
@@ -309,7 +323,7 @@ void dsi_ctrl_hw_cmn_set_video_timing(struct dsi_ctrl_hw *ctrl,
 	DSI_W32(ctrl, DSI_VIDEO_MODE_VSYNC_VPOS, reg);
 
 	/* TODO: HS TIMER value? */
-	DSI_W32(ctrl, DSI_HS_TIMER_CTRL, 0x3FD08);
+    DSI_W32(ctrl, DSI_HS_TIMER_CTRL, dsi_ctrl_calc_hs_timeout(mode));
 	DSI_W32(ctrl, DSI_MISR_VIDEO_CTRL, 0x10100);
 	DSI_W32(ctrl, DSI_DSI_TIMING_FLUSH, 0x1);
 	pr_debug("[DSI_%d] ctrl video parameters updated\n", ctrl->index);
@@ -392,7 +406,7 @@ void dsi_ctrl_hw_cmn_setup_cmd_stream(struct dsi_ctrl_hw *ctrl,
 	}
 
 	/* HS Timer value */
-	DSI_W32(ctrl, DSI_HS_TIMER_CTRL, 0x3FD08);
+    DSI_W32(ctrl, DSI_HS_TIMER_CTRL, dsi_ctrl_calc_hs_timeout(mode));
 
 	stream_ctrl = (stride_final + 1) << 16;
 	stream_ctrl |= (vc_id & 0x3) << 8;
@@ -1159,6 +1173,7 @@ void dsi_ctrl_hw_cmn_enable_error_interrupts(struct dsi_ctrl_hw *ctrl,
 		int_mask0 &= ~BIT(5);
 	if (errors & DSI_HS_TX_TIMEOUT)
 		int_mask0 &= ~BIT(6);
+
 	if (errors & DSI_BTA_TIMEOUT)
 		int_mask0 &= ~BIT(7);
 
@@ -1495,6 +1510,7 @@ void dsi_ctrl_hw_cmn_set_continuous_clk(struct dsi_ctrl_hw *ctrl, bool enable)
 {
 	u32 reg = 0;
 
+    pr_err("%s: +++++ \n", __func__);
 	reg = DSI_R32(ctrl, DSI_LANE_CTRL);
 	if (enable)
 		reg |= BIT(28);
