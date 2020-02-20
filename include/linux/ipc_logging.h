@@ -226,6 +226,7 @@ int ipc_log_context_destroy(void *ctxt);
 
 #else
 
+#define EINVAL 22
 static inline void *ipc_log_context_create(int max_num_pages,
 	const char *modname, uint16_t user_version)
 { return NULL; }
