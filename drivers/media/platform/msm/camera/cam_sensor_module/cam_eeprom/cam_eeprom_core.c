@@ -45,7 +45,7 @@ static int cam_eeprom_read_memory(struct cam_eeprom_ctrl_t *e_ctrl,
 	eb_info = (struct cam_eeprom_soc_private *)e_ctrl->soc_info.soc_private;
 
 	for (j = 0; j < block->num_map; j++) {
-		CAM_DBG(CAM_EEPROM, "slave-addr = 0x%X", emap[j].saddr);
+		CAM_ERR(CAM_EEPROM, "slave-addr = 0x%X", emap[j].saddr);
 		if (emap[j].saddr) {
 			eb_info->i2c_info.slave_addr = emap[j].saddr;
 			rc = cam_eeprom_update_i2c_info(e_ctrl,
@@ -153,7 +153,7 @@ static int cam_eeprom_power_up(struct cam_eeprom_ctrl_t *e_ctrl,
 	int32_t                 rc = 0;
 	struct cam_hw_soc_info *soc_info =
 		&e_ctrl->soc_info;
-
+	CAM_ERR(CAM_EEPROM, "enter cam_eeprom_power_up");
 	/* Parse and fill vreg params for power up settings */
 	rc = msm_camera_fill_vreg_params(
 		&e_ctrl->soc_info,
@@ -206,6 +206,7 @@ static int cam_eeprom_power_down(struct cam_eeprom_ctrl_t *e_ctrl)
 	struct cam_hw_soc_info         *soc_info;
 	struct cam_eeprom_soc_private  *soc_private;
 	int                             rc = 0;
+	CAM_ERR(CAM_EEPROM, "enter cam_eeprom_power_down");
 
 	if (!e_ctrl) {
 		CAM_ERR(CAM_EEPROM, "failed: e_ctrl %pK", e_ctrl);
@@ -249,7 +250,7 @@ static int cam_eeprom_match_id(struct cam_eeprom_ctrl_t *e_ctrl)
 		&id[0], 2);
 	if (rc)
 		return rc;
-	CAM_DBG(CAM_EEPROM, "read 0x%x 0x%x, check 0x%x 0x%x",
+	CAM_ERR(CAM_EEPROM, "read 0x%x 0x%x, check 0x%x 0x%x",
 		id[0], id[1], client->spi_client->mfr_id0,
 		client->spi_client->device_id0);
 	if (id[0] != client->spi_client->mfr_id0
@@ -359,7 +360,7 @@ static int32_t cam_eeprom_get_dev_handle(struct cam_eeprom_ctrl_t *e_ctrl,
 	e_ctrl->bridge_intf.device_hdl = eeprom_acq_dev.device_handle;
 	e_ctrl->bridge_intf.session_hdl = eeprom_acq_dev.session_handle;
 
-	CAM_DBG(CAM_EEPROM, "Device Handle: %d", eeprom_acq_dev.device_handle);
+	CAM_ERR(CAM_EEPROM, "Device Handle: %d", eeprom_acq_dev.device_handle);
 	if (copy_to_user((void __user *) cmd->handle, &eeprom_acq_dev,
 		sizeof(struct cam_sensor_acquire_dev))) {
 		CAM_ERR(CAM_EEPROM, "EEPROM:ACQUIRE_DEV: copy to user failed");
@@ -390,7 +391,7 @@ static int32_t cam_eeprom_update_slaveInfo(struct cam_eeprom_ctrl_t *e_ctrl,
 
 	rc = cam_eeprom_update_i2c_info(e_ctrl,
 		&soc_private->i2c_info);
-	CAM_DBG(CAM_EEPROM, "Slave addr: 0x%x Freq Mode: %d",
+	CAM_ERR(CAM_EEPROM, "Slave addr: 0x%x Freq Mode: %d",
 		soc_private->i2c_info.slave_addr,
 		soc_private->i2c_info.i2c_freq_mode);
 
