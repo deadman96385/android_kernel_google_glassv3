@@ -30,6 +30,8 @@
 		|| ((left) <= (right) && (left) <= (value) \
 			&& (value) <= (right)))
 
+extern int si1142ps_query_status(void);
+
 struct range_data {
 	u32 low_threshold;
 	u32 high_threshold;
@@ -86,6 +88,8 @@ struct step_chg_info {
 	struct delayed_work	get_config_work;
 	struct notifier_block	nb;
 };
+
+int jeita_fcc_ua = 0;
 
 static struct step_chg_info *the_chip;
 
@@ -197,11 +201,18 @@ static int get_step_chg_jeita_setting_from_profile(struct step_chg_info *chip)
 	handle = of_get_property(chip->dev->of_node,
 			"qcom,battery-data", NULL);
 	if (!handle) {
+		/* QCI Rex, Fix of_get_property can't get qcom,battery-data property. - S */
+		pr_debug("of_get_property can't get qcom,battery-data");
+		batt_node = of_find_node_by_name(chip->dev->of_node, "qcom,battery-data");
+		/*
 		pr_debug("ignore getting sw-jeita/step charging settings from profile\n");
 		return 0;
+		*/
+		/* QCI Rex, Fix of_get_property can't get qcom,battery-data property. - E */
 	}
-
+	else {
 	batt_node = of_find_node_by_phandle(be32_to_cpup(handle));
+	}
 	if (!batt_node) {
 		pr_err("Get battery data node failed\n");
 		return -EINVAL;
@@ -430,6 +441,7 @@ static int handle_step_chg_config(struct step_chg_info *chip)
 			pval.intval,
 			&chip->step_index,
 			&fcc_ua);
+
 	if (rc < 0) {
 		/* remove the vote if no step-based fcc is found */
 		if (chip->fcc_votable)
@@ -508,8 +520,17 @@ static int handle_jeita(struct step_chg_info *chip)
 		/* changing FCC is a must */
 		return -EINVAL;
 
+	// QCI Rex, when don, we limit charging current to 0.2A
+	ps_status = si1142ps_query_status();
+	if (0 == ps_status && fcc_ua > 400000) {
+                fcc_ua = 200000;
+                pr_info("limiting charging current of donned device, "
+                        "fcc_ua=%d uA", fcc_ua);
+        }
+
 	vote(chip->fcc_votable, JEITA_VOTER, true, fcc_ua);
 
+	jeita_fcc_ua = fcc_ua;
 	rc = get_val(chip->jeita_fv_config->fv_cfg,
 			chip->jeita_fv_config->hysteresis,
 			chip->jeita_fv_index,
@@ -599,7 +620,6 @@ static void status_change_work(struct work_struct *work)
 		reschedule_step_work_us = rc;
 	if (rc < 0)
 		pr_err("Couldn't handle step rc = %d\n", rc);
-
 	reschedule_us = min(reschedule_jeita_work_us, reschedule_step_work_us);
 	if (reschedule_us == 0)
 		__pm_relax(chip->step_chg_ws);
