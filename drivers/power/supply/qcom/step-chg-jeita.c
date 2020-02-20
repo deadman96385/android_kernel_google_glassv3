@@ -211,11 +211,17 @@ static int get_step_chg_jeita_setting_from_profile(struct step_chg_info *chip)
 	handle = of_get_property(chip->dev->of_node,
 			"qcom,battery-data", NULL);
 	if (!handle) {
+		/* QCI Rex, Fix of_get_property can't get qcom,battery-data property. - S */
+		pr_debug("of_get_property can't get qcom,battery-data");
+		batt_node = of_find_node_by_name(chip->dev->of_node, "qcom,battery-data");
+		/*
 		pr_debug("ignore getting sw-jeita/step charging settings from profile\n");
 		return 0;
+		*/
+		/* QCI Rex, Fix of_get_property can't get qcom,battery-data property. - E */
+	} else {
+		batt_node = of_find_node_by_phandle(be32_to_cpup(handle));
 	}
-
-	batt_node = of_find_node_by_phandle(be32_to_cpup(handle));
 	if (!batt_node) {
 		pr_err("Get battery data node failed\n");
 		return -EINVAL;
