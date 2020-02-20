@@ -30,6 +30,10 @@
 		|| ((left) <= (right) && (left) <= (value) \
 			&& (value) <= (right)))
 
+extern int si1142ps_query_status(void);
+
+extern int step_chg_jeita_query_limit_fcc_ua(void);
+
 struct range_data {
 	u32 low_threshold;
 	u32 high_threshold;
@@ -89,6 +93,8 @@ struct step_chg_info {
 	struct delayed_work	get_config_work;
 	struct notifier_block	nb;
 };
+
+int jeita_fcc_ua = 0;
 
 static struct step_chg_info *the_chip;
 
@@ -445,7 +451,7 @@ static int get_val(struct range_data *range, int hysteresis, int current_index,
 static int handle_step_chg_config(struct step_chg_info *chip)
 {
 	union power_supply_propval pval = {0, };
-	int rc = 0, fcc_ua = 0;
+	int rc = 0, fcc_ua = 0,ps_status;
 	u64 elapsed_us;
 
 	elapsed_us = ktime_us_delta(ktime_get(), chip->step_last_update_time);
@@ -479,6 +485,26 @@ static int handle_step_chg_config(struct step_chg_info *chip)
 			pval.intval,
 			&chip->step_index,
 			&fcc_ua);
+	// QCI Rex, modify for battery spec. - S
+	// ugly code,
+	// if step charge current and jeita current both equal 0.8A,
+	// it means v in 4.2~4.4 and t in 10~23.
+	// In this condition, fcc_ua should be 0.4A
+	if (800000 == fcc_ua && 800000 == jeita_fcc_ua) {
+		fcc_ua = 400000;
+	}
+	// QCI Rex, modify for battery spec. - E
+
+	// QCI Rex, when don, we limit charging current to 0.2A
+	ps_status = si1142ps_query_status();
+	if (step_chg_jeita_query_limit_fcc_ua()) { /* ignore don/doff status when limit_fcc_ua is set */
+		if (0 == ps_status && fcc_ua > 400000) {
+			fcc_ua = 200000;
+			pr_info("limiting charging current of donned device, "
+					"fcc_ua=%d uA\n", fcc_ua);
+		}
+	}
+
 	if (rc < 0) {
 		/* remove the vote if no step-based fcc is found */
 		if (chip->fcc_votable)
@@ -509,7 +535,7 @@ reschedule:
 static int handle_jeita(struct step_chg_info *chip)
 {
 	union power_supply_propval pval = {0, };
-	int rc = 0, fcc_ua = 0, fv_uv = 0;
+	int rc = 0, fcc_ua = 0, fv_uv = 0, ps_status;
 	u64 elapsed_us;
 
 	rc = power_supply_get_property(chip->batt_psy,
@@ -556,8 +582,19 @@ static int handle_jeita(struct step_chg_info *chip)
 		/* changing FCC is a must */
 		return -EINVAL;
 
+	// QCI Rex, when don, we limit charging current to 0.2A
+	ps_status = si1142ps_query_status();
+	if (step_chg_jeita_query_limit_fcc_ua()) { /* ignore don/doff status when limit_fcc_ua is set */
+		if (0 == ps_status && fcc_ua > 400000) {
+			fcc_ua = 200000;
+			pr_info("limiting charging current of donned device, "
+					"fcc_ua=%d uA\n", fcc_ua);
+		}
+	}
+
 	vote(chip->fcc_votable, JEITA_VOTER, fcc_ua ? true : false, fcc_ua);
 
+	jeita_fcc_ua = fcc_ua;
 	rc = get_val(chip->jeita_fv_config->fv_cfg,
 			chip->jeita_fv_config->hysteresis,
 			chip->jeita_fv_index,
