@@ -984,11 +984,16 @@ static int rradc_do_conversion(struct rradc_chip *chip,
 		batt_id_150 = (buf[5] << 8) | buf[4];
 		batt_id_15 = (buf[3] << 8) | buf[2];
 		batt_id_5 = (buf[1] << 8) | buf[0];
+		/* QCI Rex, let batt_id = 0 is valid. - S */
+		// Our batt_id is zero, so I pass this statements.
+		/*
 		if ((!batt_id_150) && (!batt_id_15) && (!batt_id_5)) {
 			pr_err("Invalid batt_id values with all zeros\n");
 			rc = -EINVAL;
 			goto fail;
 		}
+		*/
+		/* QCI Rex, let batt_id = 0 is valid. - E */
 
 		if (batt_id_150 <= FG_ADC_RR_BATT_ID_RANGE) {
 			pr_debug("Batt_id_150 is chosen\n");
