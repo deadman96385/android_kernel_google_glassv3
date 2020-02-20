@@ -963,8 +963,14 @@ static unsigned long vco_10nm_recalc_rate(struct clk_hw *hw,
 		return 0;
 	}
 
-	if (!dsi_pll_10nm_lock_status(pll))
+	/*
+	 * During continuous splash use case we want driver to recalc
+	 * all dividers instead of returning bootloader configurations.
+	 */
+	if (!dsi_pll_10nm_lock_status(pll)) {
 		pll->handoff_resources = true;
+		return 0;
+	}
 
 	dec = MDSS_PLL_REG_R(pll->pll_base, PLL_DECIMAL_DIV_START_1);
 	dec &= 0xFF;
