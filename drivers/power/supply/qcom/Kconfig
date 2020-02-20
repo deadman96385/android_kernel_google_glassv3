@@ -115,4 +115,10 @@ config QPNP_TYPEC
 	  USB power-delivery. The driver adds support to report these type-C
 	  parameters via the power-supply framework.
 
+config STEP_CHG_JEITA
+	tristate "STEP_CHG_JEITA driver"
+	help
+	  Say Y here to enable STEP_CHG_JEITA driver.
+	  If unsure, say N.
+
 endmenu
