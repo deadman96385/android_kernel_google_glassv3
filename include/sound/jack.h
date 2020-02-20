@@ -87,6 +87,11 @@ struct snd_jack {
 #endif /* CONFIG_SND_JACK_INPUT_DEV */
 	void *private_data;
 	void (*private_free)(struct snd_jack *);
+#ifdef CONFIG_DEBUG_FS
+	struct dentry *debugfs_jack;
+	struct dentry *debugfs_jack_status;
+	int status;
+#endif
 };
 
 #ifdef CONFIG_SND_JACK
