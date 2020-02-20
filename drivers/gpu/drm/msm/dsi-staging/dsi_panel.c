@@ -22,6 +22,13 @@
 #include "dsi_panel.h"
 #include "dsi_ctrl_hw.h"
 
+extern void set_led_backlight(int brightness);
+extern int lifmd6000_power_on(void);
+extern int lifmd6000_power_off(void);
+extern int a254_power_on(void);
+extern int a254_power_off(void);
+extern int a254_post_power_on(void);
+
 /**
  * topology is currently defined by a set of following 3 values:
  * 1. num of layer mixers
@@ -262,6 +269,7 @@ static int dsi_panel_gpio_request(struct dsi_panel *panel)
 			pr_err("request for reset_gpio failed, rc=%d\n", rc);
 			goto error;
 		}
+		gpio_free(r_config->reset_gpio);//Peter Cheng, 2018/08/21, free gpio for CDONE check
 	}
 
 	if (gpio_is_valid(r_config->disp_en_gpio)) {
@@ -361,6 +369,13 @@ static int dsi_panel_reset(struct dsi_panel *panel)
 	}
 
 	if (r_config->count) {
+		//Peter Cheng, 2018/08/21, request reset GPIO
+		rc = gpio_request(r_config->reset_gpio, "reset_gpio");
+		if (rc) {
+			pr_err("request for reset_gpio failed, rc=%d\n", rc);
+			goto exit;
+		}
+		//-----
 		rc = gpio_direction_output(r_config->reset_gpio,
 			r_config->sequence[0].level);
 		if (rc) {
@@ -404,6 +419,7 @@ static int dsi_panel_reset(struct dsi_panel *panel)
 			pr_err("unable to set dir for mode gpio rc=%d\n", rc);
 	}
 exit:
+if (gpio_is_valid(r_config->reset_gpio))    gpio_free(r_config->reset_gpio);//Peter Cheng, 2018/08/21, free gpio for CDONE check
 	return rc;
 }
 
@@ -447,6 +463,8 @@ static int dsi_panel_power_on(struct dsi_panel *panel)
 		pr_err("[%s] failed to reset panel, rc=%d\n", panel->name, rc);
 		goto error_disable_gpio;
 	}
+	lifmd6000_power_on();
+	a254_power_on();
 
 	goto exit;
 
@@ -488,6 +506,9 @@ static int dsi_panel_power_off(struct dsi_panel *panel)
 	rc = dsi_pwr_enable_regulator(&panel->power_info, false);
 	if (rc)
 		pr_err("[%s] failed to enable vregs, rc=%d\n", panel->name, rc);
+
+	a254_power_off();
+	lifmd6000_power_off();
 
 	return rc;
 }
@@ -661,6 +682,11 @@ int dsi_panel_set_backlight(struct dsi_panel *panel, u32 bl_lvl)
 	case DSI_BACKLIGHT_DCS:
 		rc = dsi_panel_update_backlight(panel, bl_lvl);
 		break;
+  case DSI_BACKLIGHT_PWM:
+		if(bl_lvl > 192)
+			bl_lvl = 192;
+		set_led_backlight(bl_lvl);
+		break;
 	default:
 		pr_err("Backlight type(%d) not supported\n", bl->type);
 		rc = -ENOTSUPP;
@@ -679,6 +705,7 @@ static int dsi_panel_bl_register(struct dsi_panel *panel)
 		rc = dsi_panel_led_bl_register(panel, bl);
 		break;
 	case DSI_BACKLIGHT_DCS:
+  case DSI_BACKLIGHT_PWM:
 		break;
 	default:
 		pr_err("Backlight type(%d) not supported\n", bl->type);
@@ -700,6 +727,7 @@ static int dsi_panel_bl_unregister(struct dsi_panel *panel)
 		led_trigger_unregister_simple(bl->wled);
 		break;
 	case DSI_BACKLIGHT_DCS:
+  case DSI_BACKLIGHT_PWM:
 		break;
 	default:
 		pr_err("Backlight type(%d) not supported\n", bl->type);
@@ -1852,7 +1880,7 @@ static int dsi_panel_parse_bl_pwm_config(struct dsi_backlight_config *config,
 {
 	int rc = 0;
 	u32 val;
-
+	return rc; /* skip pwm parser, since we don't really use pwm to configure backlight. */
 	rc = of_property_read_u32(of_node, "qcom,dsi-bl-pmic-bank-select",
 				  &val);
 	if (rc) {
@@ -3585,6 +3613,8 @@ int dsi_panel_post_enable(struct dsi_panel *panel)
 		       panel->name, rc);
 		goto error;
 	}
+	a254_post_power_on();
+	msleep(50);  /* add delay to prevent blinking white screen */
 error:
 	mutex_unlock(&panel->panel_lock);
 	return rc;
