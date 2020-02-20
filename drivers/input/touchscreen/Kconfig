@@ -1226,4 +1226,15 @@ config TOUCHSCREEN_SYNAPTICS_DSX
 
 source "drivers/input/touchscreen/synaptics_dsx/Kconfig"
 
+
+config TOUCHSCREEN_CYPRESS
+        bool "CYPRESS Touchscreen Driver"
+        depends on I2C
+        help
+          Say Y here if you have a Cypress Touchscreen.
+
+          If unsure, say N.
+
+source "drivers/input/touchscreen/cypress/Kconfig"
+
 endif
