@@ -27,6 +27,10 @@
 #include "cam_context_utils.h"
 #include "cam_common_util.h"
 
+#undef CAM_DBG
+#define CAM_DBG(__module, fmt, ...)	\
+	no_printk(KERN_DEBUG pr_fmt(fmt), ##__VA_ARGS__)
+
 static const char isp_dev_name[] = "cam-isp";
 
 static int cam_isp_context_dump_active_request(void *data, unsigned long iova,
@@ -50,7 +54,7 @@ static void __cam_isp_ctx_update_state_monitor_array(
 	ctx_isp->cam_isp_ctx_state_monitor[iterator].evt_time_stamp =
 		jiffies_to_msecs(jiffies);
 }
-
+/*
 static const char *__cam_isp_ctx_substate_val_to_type(
 	uint32_t type)
 {
@@ -92,7 +96,7 @@ static const char *__cam_isp_hw_evt_val_to_type(
 		return "CAM_ISP_EVENT_INVALID";
 	}
 }
-
+*/
 static void __cam_isp_ctx_dump_state_monitor_array(
 	struct cam_isp_context *ctx_isp)
 {
@@ -102,8 +106,8 @@ static void __cam_isp_ctx_dump_state_monitor_array(
 	struct cam_isp_context_state_monitor *cam_isp_ctx_state_monitor;
 
 	state_head = atomic64_read(&ctx_isp->state_monitor_head);
-	CAM_ERR_RATE_LIMIT(CAM_ISP,
-		"Dumping state information for preceding requests");
+	//CAM_ERR_RATE_LIMIT(CAM_ISP,
+	//	"Dumping state information for preceding requests");
 
 	for (i = CAM_ISP_CTX_STATE_MONITOR_MAX_ENTRIES - 1; i >= 0;
 		i--) {
@@ -113,14 +117,14 @@ static void __cam_isp_ctx_dump_state_monitor_array(
 		cam_isp_ctx_state_monitor =
 			&ctx_isp->cam_isp_ctx_state_monitor[index];
 
-		CAM_ERR_RATE_LIMIT(CAM_ISP,
-			"time[0x%llx] req_id[%u] state[%s] evt_type[%s]",
-			cam_isp_ctx_state_monitor->evt_time_stamp,
-			cam_isp_ctx_state_monitor->req_id,
-			__cam_isp_ctx_substate_val_to_type(
-			cam_isp_ctx_state_monitor->curr_state),
-			__cam_isp_hw_evt_val_to_type(
-			cam_isp_ctx_state_monitor->trigger));
+	//	CAM_ERR_RATE_LIMIT(CAM_ISP,
+	//		"time[0x%llx] req_id[%u] state[%s] evt_type[%s]",
+	//		cam_isp_ctx_state_monitor->evt_time_stamp,
+	//		cam_isp_ctx_state_monitor->req_id,
+	//		__cam_isp_ctx_substate_val_to_type(
+	//		cam_isp_ctx_state_monitor->curr_state),
+	//		__cam_isp_hw_evt_val_to_type(
+	//		cam_isp_ctx_state_monitor->trigger));
 	}
 }
 
@@ -175,7 +179,7 @@ static int __cam_isp_ctx_enqueue_init_request(
 	spin_lock_bh(&ctx->lock);
 	if (list_empty(&ctx->pending_req_list)) {
 		list_add_tail(&req->list, &ctx->pending_req_list);
-		CAM_DBG(CAM_ISP, "INIT packet added req id= %d",
+		CAM_DBG(CAM_ISP, "INIT packet added req id= %lld",
 			req->request_id);
 		goto end;
 	}
