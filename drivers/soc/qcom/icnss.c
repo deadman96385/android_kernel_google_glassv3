@@ -2458,7 +2458,7 @@ static int icnss_tcdev_set_cur_state(struct thermal_cooling_device *tcdev,
 	if (!priv->ops || !priv->ops->set_therm_state)
 		return 0;
 
-	icnss_pr_vdbg("Cooling device set current state: %ld",
+	icnss_pr_info("Cooling device set current state: %ld",
 							thermal_state);
 
 	ret = priv->ops->set_therm_state(dev, thermal_state);
@@ -2486,15 +2486,15 @@ int icnss_thermal_register(struct device *dev, unsigned long max_state)
 		priv->tcdev = thermal_of_cooling_device_register(dev->of_node,
 						"icnss", priv,
 						&icnss_cooling_ops);
-		if (IS_ERR_OR_NULL(priv->tcdev)) {
+		if (IS_ERR(priv->tcdev)) {
 			ret = PTR_ERR(priv->tcdev);
 			icnss_pr_err("Cooling device register failed: %d\n",
 								ret);
 		} else {
-			icnss_pr_vdbg("Cooling device registered");
+			icnss_pr_info("Cooling device registered");
 		}
 	} else {
-		icnss_pr_dbg("Cooling device registration not supported");
+		icnss_pr_info("Cooling device registration not supported");
 		ret = -EOPNOTSUPP;
 	}
 
@@ -2506,7 +2506,7 @@ void icnss_thermal_unregister(struct device *dev)
 {
 	struct icnss_priv *priv = dev_get_drvdata(dev);
 
-	if (!IS_ERR_OR_NULL(priv->tcdev))
+	if (!IS_ERR(priv->tcdev))
 		thermal_cooling_device_unregister(priv->tcdev);
 
 	priv->tcdev = NULL;
@@ -2519,7 +2519,7 @@ int icnss_get_curr_therm_state(struct device *dev,
 	struct icnss_priv *priv = dev_get_drvdata(dev);
 	int ret = 0;
 
-	if (IS_ERR_OR_NULL(priv->tcdev)) {
+	if (IS_ERR(priv->tcdev)) {
 		ret = PTR_ERR(priv->tcdev);
 		icnss_pr_err("Get current thermal state failed: %d\n", ret);
 		return ret;
