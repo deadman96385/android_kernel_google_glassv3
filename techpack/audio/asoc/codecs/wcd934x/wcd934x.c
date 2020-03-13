@@ -49,6 +49,7 @@
 #include "../wcd9xxx-resmgr-v2.h"
 #include "../wcdcal-hwdep.h"
 #include "wcd934x-dsd.h"
+#include "../msm-cdc-pinctrl.h"
 
 #define WCD934X_RATES_MASK (SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000 |\
 			    SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_48000 |\
@@ -636,6 +637,8 @@ struct tavil_priv {
 	struct platform_device *pdev_child_devices
 		[WCD934X_CHILD_DEVICES_MAX];
 	int child_count;
+
+	struct device_node *lineout_amp_np;
 };
 
 static const struct tavil_reg_mask_val tavil_spkr_default[] = {
@@ -2872,6 +2875,33 @@ static int tavil_codec_hphl_dac_event(struct snd_soc_dapm_widget *w,
 	return ret;
 }
 
+static int lineout_amp_ctrl(struct tavil_priv *tavil, bool enable)
+{
+	int ret = 0;
+
+	dev_dbg(tavil->dev, "%s: enable: %d\n",
+				__func__, enable);
+
+	if (!tavil->lineout_amp_np) {
+		dev_err(tavil->dev, "%s: lineout amp node is not valid\n",
+			__func__);
+		return -EINVAL;
+	}
+
+	if (enable)
+		ret = msm_cdc_pinctrl_select_active_state(
+						tavil->lineout_amp_np);
+	else
+		ret = msm_cdc_pinctrl_select_sleep_state(
+						tavil->lineout_amp_np);
+	if (ret != 0)
+		dev_err(tavil->dev,
+			"%s: Failed to turn state %d; ret=%d\n",
+			__func__, enable, ret);
+
+	return ret;
+}
+
 static int tavil_codec_lineout_dac_event(struct snd_soc_dapm_widget *w,
 					 struct snd_kcontrol *kcontrol,
 					 int event)
@@ -2887,12 +2917,14 @@ static int tavil_codec_lineout_dac_event(struct snd_soc_dapm_widget *w,
 			     WCD_CLSH_EVENT_PRE_DAC,
 			     WCD_CLSH_STATE_LO,
 			     CLS_AB);
+		lineout_amp_ctrl(tavil, true);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		wcd_clsh_fsm(codec, &tavil->clsh_d,
 			     WCD_CLSH_EVENT_POST_PA,
 			     WCD_CLSH_STATE_LO,
 			     CLS_AB);
+		lineout_amp_ctrl(tavil, false);
 		break;
 	}
 
@@ -9752,6 +9784,8 @@ static int tavil_handle_pdata(struct tavil_priv *tavil,
 		dev_err(codec->dev, "%s: NULL pdata\n", __func__);
 		return -ENODEV;
 	}
+
+	tavil->lineout_amp_np = pdata->lineout_amp_node;
 
 	/* set micbias voltage */
 	vout_ctl_1 = wcd934x_get_micb_vout_ctl_val(pdata->micbias.micb1_mv);

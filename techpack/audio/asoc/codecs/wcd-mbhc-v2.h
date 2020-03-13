@@ -413,6 +413,7 @@ struct usbc_ana_audio_config {
 	struct device_node *usbc_en1_gpio_p; /* used by pinctrl API */
 	struct device_node *usbc_en2_gpio_p; /* used by pinctrl API */
 	struct device_node *usbc_force_gpio_p; /* used by pinctrl API */
+	int usbc_enn_gpio;
 };
 
 struct wcd_mbhc_config {

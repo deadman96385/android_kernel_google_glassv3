@@ -1731,6 +1731,15 @@ int wcd_mbhc_start(struct wcd_mbhc *mbhc, struct wcd_mbhc_config *mbhc_cfg)
 				goto err;
 		}
 
+		/* enable analog switch */
+		 config->usbc_enn_gpio = of_get_named_gpio(card->dev->of_node,
+                                        "qcom,usbc-enn-gpio", 0);
+	        if (!gpio_is_valid(config->usbc_enn_gpio))
+	                pr_err("%s:%d, usbc enn gpio not specified\n",
+	                                                __func__, __LINE__);
+		else
+			gpio_set_value((config->usbc_enn_gpio), 0);
+
 		dev_dbg(mbhc->codec->dev, "%s: calling usb_c_analog_init\n",
 			__func__);
 		/* init PMI notifier */
@@ -1760,6 +1769,12 @@ int wcd_mbhc_start(struct wcd_mbhc *mbhc, struct wcd_mbhc_config *mbhc_cfg)
 
 	return rc;
 err:
+	if (config->usbc_enn_gpio > 0) {
+		dev_dbg(card->dev, "%s free usb enn gpio %d\n",
+			__func__, config->usbc_enn_gpio);
+		gpio_free(config->usbc_enn_gpio);
+		config->usbc_enn_gpio = 0;
+	}
 	if (config->usbc_en1_gpio > 0) {
 		dev_dbg(card->dev, "%s free usb en1 gpio %d\n",
 			__func__, config->usbc_en1_gpio);
