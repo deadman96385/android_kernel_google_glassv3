@@ -341,6 +341,15 @@ struct wcd9xxx_pdata *wcd9xxx_populate_dt_data(struct device *dev)
 		goto err_parse_dt_prop;
 	}
 
+	pdata->lineout_amp_node= of_parse_phandle(dev->of_node,
+					     "qcom,lineout-amp-node", 0);
+	if (!pdata->lineout_amp_node) {
+		dev_err(dev, "%s: Looking up %s property in node %s failed\n",
+			__func__, "qcom,lineout-amp-node",
+			dev->of_node->full_name);
+		goto err_parse_dt_prop;
+	}
+
 	pdata->has_buck_vsel_gpio = of_property_read_bool(dev->of_node,
 						"qcom,has-buck-vsel-gpio");
 	if (pdata->has_buck_vsel_gpio) {
