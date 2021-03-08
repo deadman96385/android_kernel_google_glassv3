@@ -73,13 +73,16 @@
 #define  MSB(u16)       (((uint8_t  *)&(u16))[1])
 #define  LSB(u16)       (((uint8_t  *)&(u16))[0])
 
+#define	HINGE_STATUS_SYSFS_ATTR	"hinge_status"
 
 enum dev_irq_action_status {
 	IRQ_ACTION_NOTHING,
-	IRQ_ACTION_SHUTDOWN,
+	IRQ_ACTION_HINGE_CLOSE,
+	IRQ_ACTION_HINGE_OPEN,
 	IRQ_ACTION_CAMERA_KEY_PRESS,
 	IRQ_ACTION_CAMERA_KEY_RELESS,
 	IRQ_ACTION_REBOOT,
+	IRQ_ACTION_SHUTDOWN,
 };
 
 enum dev_power_state {
@@ -126,6 +129,12 @@ enum dev_hinge_func {
 	HINGE_FUNC_DISABLE,
 };
 
+enum dev_hinge_status {
+	HINGE_ON,
+	HINGE_OFF,
+	HINGE_UNKNOWN,
+};
+
 #define ATMEL_DEBUG(format, arg...)		\
 	do {						\
 		if (debug_level > 0)			\
@@ -163,6 +172,7 @@ struct atmel_app_dev {
 	uint32_t hinge_threshold;
 	uint32_t camkey_threshold;
 	uint8_t hinge_func;
+	uint8_t hinge_status;
 
 	int enter_standby;
 	int enter_factory;
@@ -1140,6 +1150,16 @@ void atmel_app_delay_wq_task(struct work_struct *work)
 	queue_delayed_work(atmel_app_dev->mcu_wq, &atmel_app_dev->mcu_wq_task, atmel_app_dev->polling_time);
 }
 
+void atmel_app_notify_hinge_status(void) {
+	uint8_t hinge_status = 0;
+	atmel_app_get_data_8bit(ATMEL_CMD_GET_HINGE_STATUS, &hinge_status);
+	if (atmel_app_dev->hinge_status != hinge_status) {
+		atmel_app_dev->hinge_status = hinge_status;
+		sysfs_notify(&atmel_app_dev->client->dev.kobj, NULL,
+			HINGE_STATUS_SYSFS_ATTR);
+	}
+}
+
 static void atmel_app_irq_action(void)
 {
 	int irq_action = atmel_app_read_irq_action();
@@ -1182,6 +1202,11 @@ static void atmel_app_irq_action(void)
 			else
 				input_report_key(atmel_app_dev->input, KEY_WAKEUP, 0);
 			input_sync(atmel_app_dev->input);
+			break;
+
+		case IRQ_ACTION_HINGE_CLOSE:
+		case IRQ_ACTION_HINGE_OPEN:
+			atmel_app_notify_hinge_status();
 			break;
 
 		default:
@@ -1550,6 +1575,9 @@ static int atmel_app_probe(struct i2c_client *client,
 	__set_bit(EV_KEY, atmel_app_dev->input->evbit);
 	__set_bit(KEY_CAMERA, atmel_app_dev->input->keybit);
 	__set_bit(KEY_WAKEUP, atmel_app_dev->input->keybit);
+	__set_bit(EV_SW, atmel_app_dev->input->evbit);
+	__set_bit(SW_LID, atmel_app_dev->input->swbit);
+	device_set_wakeup_capable(&atmel_app_dev->input->dev, true);
 
 	ret = input_register_device(atmel_app_dev->input);
 	if (ret) {
@@ -1676,6 +1704,8 @@ static int atmel_app_resume(struct device *dev)
 				pr_err("%s(%d) Set OFF_CHARGING_ALIVE fail...\n",
 					__func__, __LINE__);
 		}
+
+		atmel_app_notify_hinge_status();
 	}
 
 	return 0;
