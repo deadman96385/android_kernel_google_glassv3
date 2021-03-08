@@ -5526,6 +5526,22 @@ static ssize_t cyttsp5_glove_mode_store(struct device *dev,
 	return size;
 }
 
+static ssize_t cyttsp5_sleep_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	int sleep = -1;
+	int rc = 0;
+	struct cyttsp5_core_data *cd = dev_get_drvdata(dev);
+	sscanf(buf, "%d", &sleep);
+	if (sleep) {
+		rc = cyttsp5_put_device_into_deep_sleep_(cd);
+	} else {
+		rc = cyttsp5_core_wake_device_from_deep_sleep_(cd);
+	}
+	dev_info(dev, "%s: set sleep: 0x%x, rc: %d\n", __func__, sleep, rc);
+	return size;
+}
+
 static struct device_attribute attributes[] = {
 	__ATTR(ic_ver, S_IRUGO, cyttsp5_ic_ver_show, NULL),
 	__ATTR(drv_ver, S_IRUGO, cyttsp5_drv_ver_show, NULL),
@@ -5547,6 +5563,7 @@ static struct device_attribute attributes[] = {
 	__ATTR(panel_id, S_IRUGO, cyttsp5_panel_id_show, NULL),
 	__ATTR(platform_data, S_IRUGO, cyttsp5_platform_data_show, NULL),
 	__ATTR(glove_mode, S_IRUSR | S_IWUSR, cyttsp5_glove_mode_show, cyttsp5_glove_mode_store),
+	__ATTR(sleep, S_IWUSR, NULL, cyttsp5_sleep_store),
 };
 
 static int add_sysfs_interfaces(struct device *dev)

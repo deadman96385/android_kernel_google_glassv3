@@ -32,6 +32,8 @@
 
 extern int si1142ps_query_status(void);
 
+extern int step_chg_jeita_query_limit_fcc_ua(void);
+
 struct range_data {
 	u32 low_threshold;
 	u32 high_threshold;
@@ -453,11 +455,13 @@ static int handle_step_chg_config(struct step_chg_info *chip)
 
 	// QCI Rex, when don, we limit charging current to 0.2A
 	ps_status = si1142ps_query_status();
-	if (0 == ps_status && fcc_ua > 400000) {
-                fcc_ua = 200000;
-                pr_info("limiting charging current of donned device, "
-                        "fcc_ua=%d uA", fcc_ua);
-        }
+	if (step_chg_jeita_query_limit_fcc_ua()) { /* ignore don/doff status when limit_fcc_ua is set */
+		if (0 == ps_status && fcc_ua > 400000) {
+			fcc_ua = 200000;
+			pr_info("limiting charging current of donned device, "
+					"fcc_ua=%d uA\n", fcc_ua);
+		}
+	}
 
 	if (rc < 0) {
 		/* remove the vote if no step-based fcc is found */
@@ -539,12 +543,13 @@ static int handle_jeita(struct step_chg_info *chip)
 
 	// QCI Rex, when don, we limit charging current to 0.2A
 	ps_status = si1142ps_query_status();
-	if (0 == ps_status && fcc_ua > 400000) {
-                fcc_ua = 200000;
-                pr_info("limiting charging current of donned device, "
-                        "fcc_ua=%d uA", fcc_ua);
-        }
-
+	if (step_chg_jeita_query_limit_fcc_ua()) { /* ignore don/doff status when limit_fcc_ua is set */
+		if (0 == ps_status && fcc_ua > 400000) {
+			fcc_ua = 200000;
+			pr_info("limiting charging current of donned device, "
+					"fcc_ua=%d uA\n", fcc_ua);
+		}
+	}
 	vote(chip->fcc_votable, JEITA_VOTER, true, fcc_ua);
 
 	jeita_fcc_ua = fcc_ua;

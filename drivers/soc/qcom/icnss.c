@@ -1347,7 +1347,7 @@ static int wlfw_msa_mem_info_send_sync_msg(void)
 			ret = -EINVAL;
 			goto fail_unwind;
 		}
-
+		
 		penv->mem_region[i].reg_addr =
 			resp.mem_region_info[i].region_addr;
 		penv->mem_region[i].size =

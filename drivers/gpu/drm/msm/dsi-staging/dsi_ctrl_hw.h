@@ -811,7 +811,7 @@ struct dsi_ctrl_hw_ops {
 	 * @ctrl:         Pointer to the controller host hardware.
 	 * @enable:	  Bool to control continuous clock request.
 	 */
-	void (*set_continuous_clk)(struct dsi_ctrl_hw *ctrl, bool enable);
+    void (*set_continuous_clk)(struct dsi_ctrl_hw *ctrl, bool enable);
 };
 
 /*

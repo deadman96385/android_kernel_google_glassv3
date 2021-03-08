@@ -423,7 +423,7 @@ struct dsi_host_common_cfg {
 	u32 t_clk_pre;
 	bool ignore_rx_eot;
 	bool append_tx_eot;
-	bool force_hs_clk_lane;
+    bool force_hs_clk_lane;
 };
 
 /**

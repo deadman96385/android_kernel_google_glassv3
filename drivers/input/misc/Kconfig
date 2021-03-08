@@ -883,4 +883,5 @@ config INPUT_CAPELLA_CM3232
 	help
 	  Say Y here to enable the CM3232 Ambient Light Sensor.
 
+
 endif

@@ -3159,9 +3159,6 @@ int dsi_post_clkon_cb(void *priv,
 				goto error;
 			}
 		}
-
-		if (display->panel->host_config.force_hs_clk_lane)
-			_dsi_display_continuous_clk_ctrl(display, true);
 	}
 error:
 	return rc;
