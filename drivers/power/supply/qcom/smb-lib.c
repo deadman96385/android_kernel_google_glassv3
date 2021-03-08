@@ -3638,6 +3638,7 @@ irqreturn_t smblib_handle_usb_plugin(int irq, void *data)
 		smblib_usb_plugin_hard_reset_locked(chg);
 	else
 		smblib_usb_plugin_locked(chg);
+	sysfs_notify(&chg->usb_psy->dev.kobj, NULL, "present");
 	mutex_unlock(&chg->lock);
 	return IRQ_HANDLED;
 }
