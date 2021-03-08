@@ -11,74 +11,74 @@
  * the Free Software Foundation; version 2 of the License.
  *
  */
-#include <linux/kernel.h>
-#include <linux/init.h>
-#include <linux/module.h>
-#include <linux/device.h>
-#include <linux/i2c.h>
 #include <linux/delay.h>
-#include <linux/slab.h>
+#include <linux/device.h>
 #include <linux/fs.h>
-#include <linux/uaccess.h>
-#include <linux/leds.h>
+#include <linux/i2c.h>
+#include <linux/init.h>
+#include <linux/kernel.h>
 #include <linux/leds-ktd2026.h>
+#include <linux/leds.h>
+#include <linux/module.h>
+#include <linux/slab.h>
+#include <linux/uaccess.h>
 #include <linux/workqueue.h>
 //#include <linux/wakelock.h>
 
 #undef AN3029_COMPATIBLE
 
 /* KTD2026 register map */
-#define KTD2026_REG_EN_RST		0x00
-#define KTD2026_REG_FLASH_PERIOD	0x01
-#define KTD2026_REG_PWM1_TIMER		0x02
-#define KTD2026_REG_PWM2_TIMER		0x03
-#define KTD2026_REG_LED_EN		0x04
-#define KTD2026_REG_TRISE_TFALL		0x05
-#define KTD2026_REG_LED1		0x06
-#define KTD2026_REG_LED2		0x07
-#define KTD2026_REG_LED3		0x08
-#define KTD2026_REG_MAX			0x09
-#define KTD2026_TIME_UNIT		500
+#define KTD2026_REG_EN_RST 0x00
+#define KTD2026_REG_FLASH_PERIOD 0x01
+#define KTD2026_REG_PWM1_TIMER 0x02
+#define KTD2026_REG_PWM2_TIMER 0x03
+#define KTD2026_REG_LED_EN 0x04
+#define KTD2026_REG_TRISE_TFALL 0x05
+#define KTD2026_REG_LED1 0x06
+#define KTD2026_REG_LED2 0x07
+#define KTD2026_REG_LED3 0x08
+#define KTD2026_REG_MAX 0x09
+#define KTD2026_TIME_UNIT 500
 /* MASK */
-#define CNT_TIMER_SLOT_MASK		0x07
-#define CNT_ENABLE_MASK			0x18
-#define CNT_RISEFALL_TSCALE_MASK	0x60
+#define CNT_TIMER_SLOT_MASK 0x07
+#define CNT_ENABLE_MASK 0x18
+#define CNT_RISEFALL_TSCALE_MASK 0x60
 
-#define CNT_TIMER_SLOT_SHIFT		0x00
-#define CNT_ENABLE_SHIFT		0x03
-#define CNT_RISEFALL_TSCALE_SHIFT	0x05
+#define CNT_TIMER_SLOT_SHIFT 0x00
+#define CNT_ENABLE_SHIFT 0x03
+#define CNT_RISEFALL_TSCALE_SHIFT 0x05
 
-#define LED_R_MASK		0x00ff0000
-#define LED_G_MASK		0x0000ff00
-#define LED_B_MASK		0x000000ff
-#define LED_R_SHIFT		16
-#define LED_G_SHIFT		8
+#define LED_R_MASK 0x00ff0000
+#define LED_G_MASK 0x0000ff00
+#define LED_B_MASK 0x000000ff
+#define LED_R_SHIFT 16
+#define LED_G_SHIFT 8
 
-#define KTD2026_RESET		0x07
+#define KTD2026_RESET 0x07
 
 //#define LED_MAX_CURRENT		0x20
-#define LED_MAX_CURRENT		0xC0 //Tommy (192 x 0.125mA = 24mA)
-#define LED_DEFAULT_CURRENT	0x10
-#define LED_LOW_CURRENT		0x02
-#define LED_OFF			0x00
+#define LED_MAX_CURRENT 0xC0 // Tommy (192 x 0.125mA = 24mA)
+#define LED_DEFAULT_CURRENT 0x10
+#define LED_LOW_CURRENT 0x02
+#define LED_OFF 0x00
 #define LED_GREEN_DEFAULT_CURRENT 0x32
 
-#define	MAX_NUM_LEDS		3
+#define MAX_NUM_LEDS 3
 
-//static u8 led_dynamic_current = LED_DEFAULT_CURRENT;
-//static u8 led_lowpower_mode = 0x0;
+// static u8 led_dynamic_current = LED_DEFAULT_CURRENT;
+// static u8 led_lowpower_mode = 0x0;
 
 void set_led_green(int brightness);
 void set_led_backlight(int brightness);
-void set_esd_backlight(void);		//andy0x, export for A254 control
+void set_esd_backlight(void); // andy0x, export for A254 control
 
 enum ktd2026_led_mode {
-	LED_EN_OFF	= 0,
-	LED_EN_ON	= 1,
-	LED_EN_PWM1	= 2,
-	LED_EN_PWM2	= 3,
+	LED_EN_OFF = 0,
+	LED_EN_ON = 1,
+	LED_EN_PWM1 = 2,
+	LED_EN_PWM2 = 3,
 };
-enum ktd2026_pwm{
+enum ktd2026_pwm {
 	PWM1 = 0,
 	PWM2 = 1,
 };
@@ -89,12 +89,14 @@ static struct ktd2026_led_conf led_conf[] = {
 		.brightness = LED_OFF,
 		.max_brightness = LED_MAX_CURRENT,
 		.flags = 0,
-	}, {
+	},
+	{
 		.name = "led_g",
 		.brightness = LED_OFF,
 		.max_brightness = LED_MAX_CURRENT,
 		.flags = 0,
-	}, {
+	},
+	{
 		.name = "led_b",
 		.brightness = LED_OFF,
 		.max_brightness = LED_MAX_CURRENT,
@@ -109,24 +111,24 @@ enum ktd2026_led_enum {
 };
 
 struct ktd2026_led {
-	u8	channel;
-	u8	brightness;
-	struct led_classdev	cdev;
-	struct work_struct	brightness_work;
+	u8 channel;
+	u8 brightness;
+	struct led_classdev cdev;
+	struct work_struct brightness_work;
 	unsigned long delay_on_time_ms;
 	unsigned long delay_off_time_ms;
 };
 
 struct ktd2026_data {
-	struct	i2c_client	*client;
-	struct	mutex	mutex;
-	struct	ktd2026_led	leds[MAX_NUM_LEDS];
-	u8		shadow_reg[KTD2026_REG_MAX];
+	struct i2c_client *client;
+	struct mutex mutex;
+	struct ktd2026_led leds[MAX_NUM_LEDS];
+	u8 shadow_reg[KTD2026_REG_MAX];
 };
 
 struct i2c_client *b_client = NULL;
 
-u8 global_brightness = 0;		//andy0x, record brightness
+u8 global_brightness = 0; // andy0x, record brightness
 
 //#define SEC_LED_SPECIFIC
 
@@ -142,8 +144,7 @@ static struct device *led_dev;
 #endif
 
 static void ktd2026_leds_on(enum ktd2026_led_enum led,
-		enum ktd2026_led_mode mode, u8 bright);
-
+			    enum ktd2026_led_mode mode, u8 bright);
 
 static inline struct ktd2026_led *cdev_to_led(struct led_classdev *cdev)
 {
@@ -155,15 +156,14 @@ static int leds_i2c_write_all(struct i2c_client *client)
 	struct ktd2026_data *data = i2c_get_clientdata(client);
 	int ret;
 
-        printk(KERN_DEBUG "%s\r\n",__func__);
+	pr_debug("%s: enter\n", __func__);
 	mutex_lock(&data->mutex);
-	ret = i2c_smbus_write_i2c_block_data(client,
-			KTD2026_REG_EN_RST, KTD2026_REG_MAX,
-			&data->shadow_reg[KTD2026_REG_EN_RST]);
+	ret = i2c_smbus_write_i2c_block_data(
+		client, KTD2026_REG_EN_RST, KTD2026_REG_MAX,
+		&data->shadow_reg[KTD2026_REG_EN_RST]);
 	if (ret < 0) {
 		dev_err(&client->adapter->dev,
-			"%s: failure on i2c block write\n",
-			__func__);
+			"%s: failure on i2c block write\n", __func__);
 		goto exit;
 	}
 	mutex_unlock(&data->mutex);
@@ -175,26 +175,27 @@ exit:
 }
 
 void ktd2026_set_brightness(struct led_classdev *cdev,
-			enum led_brightness brightness)
+			    enum led_brightness brightness)
 {
-		struct ktd2026_led *led = cdev_to_led(cdev);
-		led->brightness = (u8)brightness;
-                printk(KERN_CRIT "%s %d\r\n",__func__,brightness);
-		schedule_work(&led->brightness_work);
+	struct ktd2026_led *led = cdev_to_led(cdev);
+	led->brightness = (u8)brightness;
+	pr_debug("%s: %d\n", __func__, brightness);
+	schedule_work(&led->brightness_work);
 }
 
 static void ktd2026_led_brightness_work(struct work_struct *work)
 {
-		struct i2c_client *client = b_client;
-		struct ktd2026_led *led = container_of(work,
-				struct ktd2026_led, brightness_work);
-                
-		if (led->brightness==0)
-			ktd2026_leds_on(led->channel, LED_EN_OFF, 0);
-		else ktd2026_leds_on(led->channel, LED_EN_ON, led->brightness);
+	struct i2c_client *client = b_client;
+	struct ktd2026_led *led =
+		container_of(work, struct ktd2026_led, brightness_work);
 
-                printk(KERN_CRIT "%s %d\r\n",__func__,led->brightness);
-		leds_i2c_write_all(client);
+	if (led->brightness == 0)
+		ktd2026_leds_on(led->channel, LED_EN_OFF, 0);
+	else
+		ktd2026_leds_on(led->channel, LED_EN_ON, led->brightness);
+
+	pr_debug("%s: %d\n", __func__, led->brightness);
+	leds_i2c_write_all(client);
 }
 
 /* leds_set_slope_mode function and leds_on are for compatiblity
@@ -215,39 +216,40 @@ static void ktd2026_led_brightness_work(struct work_struct *work)
  */
 #ifdef AN3029_COMPATIBLE
 static void leds_set_slope_mode(struct i2c_client *client,
-				enum ktd2026_led_enum led, u8 delay,
-				u8 dutymax, u8 dutymid, u8 dutymin,
-				u8 slptt1, u8 slptt2,
+				enum ktd2026_led_enum led, u8 delay, u8 dutymax,
+				u8 dutymid, u8 dutymin, u8 slptt1, u8 slptt2,
 				u8 dt1, u8 dt2, u8 dt3, u8 dt4)
 {
 	struct ktd2026_data *data = i2c_get_clientdata(client);
 
-	data->shadow_reg[KTD2026_REG_FLASH_PERIOD]
-			= (slptt1 + slptt2) * 4 + 2;
-	data->shadow_reg[KTD2026_REG_PWM1_TIMER]
-			= slptt1*255 / (slptt1 + slptt2);
-	data->shadow_reg[KTD2026_REG_TRISE_TFALL]
-			= ((dt3+dt4)*5 << 4) + (dt1+dt2)*5;
+	data->shadow_reg[KTD2026_REG_FLASH_PERIOD] = (slptt1 + slptt2) * 4 + 2;
+	data->shadow_reg[KTD2026_REG_PWM1_TIMER] =
+		slptt1 * 255 / (slptt1 + slptt2);
+	data->shadow_reg[KTD2026_REG_TRISE_TFALL] =
+		((dt3 + dt4) * 5 << 4) + (dt1 + dt2) * 5;
 }
 
 static void leds_on(enum ktd2026_led_enum led, bool on, bool slopemode,
-			u8 ledcc)
+		    u8 ledcc)
 {
 	struct ktd2026_data *data = i2c_get_clientdata(b_client);
 
-	if(led == LED_R)data->shadow_reg[KTD2026_REG_LED1] = ledcc;
-	if(led == LED_G)data->shadow_reg[KTD2026_REG_LED2] = ledcc;
-	if(led == LED_B)data->shadow_reg[KTD2026_REG_LED3] = ledcc;
+	if (led == LED_R)
+		data->shadow_reg[KTD2026_REG_LED1] = ledcc;
+	if (led == LED_G)
+		data->shadow_reg[KTD2026_REG_LED2] = ledcc;
+	if (led == LED_B)
+		data->shadow_reg[KTD2026_REG_LED3] = ledcc;
 
-	if (on)
-	{
+	if (on) {
 		if (slopemode)
-			data->shadow_reg[KTD2026_REG_LED_EN]
-				|= LED_EN_PWM1 << led;
-		else data->shadow_reg[KTD2026_REG_LED_EN] |= LED_EN_ON << led;
-	}
-	else
-	/*off*/
+			data->shadow_reg[KTD2026_REG_LED_EN] |= LED_EN_PWM1
+								<< led;
+		else
+			data->shadow_reg[KTD2026_REG_LED_EN] |= LED_EN_ON
+								<< led;
+	} else
+		/*off*/
 		data->shadow_reg[KTD2026_REG_LED_EN] &= ~(LED_EN_PWM2 << led);
 }
 #endif
@@ -260,42 +262,42 @@ static void leds_on(enum ktd2026_led_enum led, bool on, bool slopemode,
  *  led_b:led =4(D3) ,  led_g:led =2(D2) , led_r:led=0(D1)
  */
 static void ktd2026_leds_on(enum ktd2026_led_enum led,
-		enum ktd2026_led_mode mode, u8 bright)
+			    enum ktd2026_led_mode mode, u8 bright)
 {
-    struct ktd2026_data *data = i2c_get_clientdata(b_client);
+	struct ktd2026_data *data = i2c_get_clientdata(b_client);
 
-    if (led != 4 )
-    {
-        global_brightness = bright;//andy0x, record brightness value from system node change
-    }
+	if (led != 4) {
+		global_brightness =
+			bright; // andy0x, record brightness value from system node change
+	}
 
-    data->shadow_reg[KTD2026_REG_LED1 + led/2] = bright;
+	data->shadow_reg[KTD2026_REG_LED1 + led / 2] = bright;
 
-    printk(KERN_DEBUG "%s %x %x %x\r\n",__func__,mode,led,bright);
+	pr_debug("%s: 0x%x 0x%x 0x%x\r\n", __func__, mode, led, bright);
 
-    if (mode == LED_EN_OFF) {
-        data->shadow_reg[KTD2026_REG_LED_EN] &= ~(LED_EN_PWM2 << led);
-        if (data->shadow_reg[KTD2026_REG_LED_EN] == 0) {
-            data->shadow_reg[KTD2026_REG_EN_RST] |= BIT(3);
-            data->shadow_reg[KTD2026_REG_EN_RST] &= ~BIT(4);
-        }
-    } else {
-        data->shadow_reg[KTD2026_REG_LED_EN] |= mode << led;
-        data->shadow_reg[KTD2026_REG_EN_RST] |= (BIT(3) | BIT(4));
-    }
+	if (mode == LED_EN_OFF) {
+		data->shadow_reg[KTD2026_REG_LED_EN] &= ~(LED_EN_PWM2 << led);
+		if (data->shadow_reg[KTD2026_REG_LED_EN] == 0) {
+			data->shadow_reg[KTD2026_REG_EN_RST] |= BIT(3);
+			data->shadow_reg[KTD2026_REG_EN_RST] &= ~BIT(4);
+		}
+	} else {
+		data->shadow_reg[KTD2026_REG_LED_EN] |= mode << led;
+		data->shadow_reg[KTD2026_REG_EN_RST] |= (BIT(3) | BIT(4));
+	}
 }
 void ktd2026_set_timerslot_control(int timer_slot)
 {
 	struct ktd2026_data *data = i2c_get_clientdata(b_client);
 
 	data->shadow_reg[KTD2026_REG_EN_RST] &= ~(CNT_TIMER_SLOT_MASK);
-	data->shadow_reg[KTD2026_REG_EN_RST]
-		|= timer_slot << CNT_TIMER_SLOT_SHIFT;
+	data->shadow_reg[KTD2026_REG_EN_RST] |= timer_slot
+						<< CNT_TIMER_SLOT_SHIFT;
 }
 
 /*  Flash period = period * 0.128 + 0.256
-	exception  0 = 0.128s
-	please refer to data sheet for detail */
+        exception  0 = 0.128s
+        please refer to data sheet for detail */
 void ktd2026_set_period(int period)
 {
 	struct ktd2026_data *data = i2c_get_clientdata(b_client);
@@ -322,8 +324,8 @@ void ktd2026_set_trise_tfall(int trise, int tfall, int tscale)
 	data->shadow_reg[KTD2026_REG_TRISE_TFALL] = (tfall << 4) + trise;
 
 	data->shadow_reg[KTD2026_REG_EN_RST] &= ~(CNT_RISEFALL_TSCALE_MASK);
-	data->shadow_reg[KTD2026_REG_EN_RST]
-			|= tscale << CNT_RISEFALL_TSCALE_SHIFT;
+	data->shadow_reg[KTD2026_REG_EN_RST] |= tscale
+						<< CNT_RISEFALL_TSCALE_SHIFT;
 }
 #ifdef SEC_LED_SPECIFIC
 static void ktd2026_reset_register_work(struct work_struct *work)
@@ -337,7 +339,7 @@ static void ktd2026_reset_register_work(struct work_struct *work)
 	ktd2026_leds_on(LED_B, LED_EN_OFF, 0);
 	retval = leds_i2c_write_all(client);
 	if (retval)
-		printk(KERN_WARNING "leds_i2c_write_all failed\n");
+		pr_err("%s: leds_i2c_write_all failed\n", __func__);
 
 	ktd2026_set_timerslot_control(0); /* Tslot1 */
 	ktd2026_set_period(0);
@@ -347,7 +349,7 @@ static void ktd2026_reset_register_work(struct work_struct *work)
 
 	retval = leds_i2c_write_all(client);
 	if (retval)
-		printk(KERN_WARNING "leds_i2c_write_all failed\n");
+		pr_err("%s: leds_i2c_write_all failed\n", __func__);
 }
 
 void ktd2026_start_led_pattern(enum ktd2026_pattern mode)
@@ -412,8 +414,8 @@ void ktd2026_start_led_pattern(enum ktd2026_pattern mode)
 		ktd2026_set_period(14);
 		ktd2026_set_pwm_duty(PWM1, 128);
 		ktd2026_set_trise_tfall(7, 7, 0);
-		ktd2026_leds_on(LED_B, LED_EN_ON, led_dynamic_current/2);
-		ktd2026_leds_on(LED_G, LED_EN_PWM1, led_dynamic_current/3);
+		ktd2026_leds_on(LED_B, LED_EN_ON, led_dynamic_current / 2);
+		ktd2026_leds_on(LED_G, LED_EN_PWM1, led_dynamic_current / 3);
 		break;
 
 	default:
@@ -422,14 +424,13 @@ void ktd2026_start_led_pattern(enum ktd2026_pattern mode)
 	}
 	retval = leds_i2c_write_all(client);
 	if (retval)
-		printk(KERN_WARNING "leds_i2c_write_all failed\n");
+		pr_err("%s: leds_i2c_write_all failed\n", __func__);
 }
 EXPORT_SYMBOL(ktd2026_start_led_pattern);
 
 static void ktd2026_set_led_blink(enum ktd2026_led_enum led,
-					unsigned int delay_on_time,
-					unsigned int delay_off_time,
-					u8 brightness)
+				  unsigned int delay_on_time,
+				  unsigned int delay_off_time, u8 brightness)
 {
 	int on_time, off_time;
 
@@ -450,17 +451,17 @@ static void ktd2026_set_led_blink(enum ktd2026_led_enum led,
 	on_time = (delay_on_time + KTD2026_TIME_UNIT - 1) / KTD2026_TIME_UNIT;
 	off_time = (delay_off_time + KTD2026_TIME_UNIT - 1) / KTD2026_TIME_UNIT;
 	ktd2026_set_timerslot_control(0); /* Tslot1 */
-	ktd2026_set_period((on_time+off_time) * 4 + 2);
-	ktd2026_set_pwm_duty(PWM1, on_time*255 / (on_time + off_time));
+	ktd2026_set_period((on_time + off_time) * 4 + 2);
+	ktd2026_set_pwm_duty(PWM1, on_time * 255 / (on_time + off_time));
 	ktd2026_set_trise_tfall(0, 0, 0);
-	printk(KERN_CRIT "on_time=%d, off_time=%d, period=%d, duty=%d\n" ,
-		on_time, off_time, (on_time+off_time) * 4 + 2,
-		on_time * 255 / (on_time + off_time) );
+	pr_debug("on_time=%d, off_time=%d, period=%d, duty=%d\n", on_time,
+		 off_time, (on_time + off_time) * 4 + 2,
+		 on_time * 255 / (on_time + off_time));
 }
 
 static ssize_t store_ktd2026_led_lowpower(struct device *dev,
-					struct device_attribute *devattr,
-					const char *buf, size_t count)
+					  struct device_attribute *devattr,
+					  const char *buf, size_t count)
 {
 	int retval;
 	u8 led_lowpower;
@@ -474,14 +475,14 @@ static ssize_t store_ktd2026_led_lowpower(struct device *dev,
 
 	led_lowpower_mode = led_lowpower;
 
-	printk(KERN_DEBUG "led_lowpower mode set to %i\n", led_lowpower);
+	dev_dbg(dev, "led_lowpower mode set to %i\n", led_lowpower);
 
 	return count;
 }
 
 static ssize_t store_ktd2026_led_brightness(struct device *dev,
-					struct device_attribute *devattr,
-					const char *buf, size_t count)
+					    struct device_attribute *devattr,
+					    const char *buf, size_t count)
 {
 	int retval;
 	u8 brightness;
@@ -498,7 +499,7 @@ static ssize_t store_ktd2026_led_brightness(struct device *dev,
 
 	led_dynamic_current = brightness;
 
-	printk(KERN_DEBUG "led brightness set to %i\n", brightness);
+	dev_dbg(dev, "led brightness set to %i\n", brightness);
 
 	return count;
 }
@@ -521,8 +522,8 @@ static ssize_t store_ktd2026_led_br_lev(struct device *dev,
 }
 
 static ssize_t store_ktd2026_led_pattern(struct device *dev,
-					struct device_attribute *devattr,
-					const char *buf, size_t count)
+					 struct device_attribute *devattr,
+					 const char *buf, size_t count)
 {
 	int retval;
 	unsigned int mode = 0;
@@ -536,14 +537,14 @@ static ssize_t store_ktd2026_led_pattern(struct device *dev,
 	}
 
 	ktd2026_start_led_pattern(mode);
-	printk(KERN_DEBUG "led pattern : %d is activated(Type:%d)\n",
-		mode, led_lowpower_mode);
+	dev_dbg(dev, "led pattern : %d is activated(Type:%d)\n", mode,
+		led_lowpower_mode);
 	return count;
 }
 
 static ssize_t store_ktd2026_led_blink(struct device *dev,
-					struct device_attribute *devattr,
-					const char *buf, size_t count)
+				       struct device_attribute *devattr,
+				       const char *buf, size_t count)
 {
 	/* ex) echo 0x201000 2000 500 > led_blink */
 	/* brightness r=20 g=10 b=00, ontime=2000ms, offtime=500ms */
@@ -558,8 +559,8 @@ static ssize_t store_ktd2026_led_blink(struct device *dev,
 	u8 led_g_brightness = 0;
 	u8 led_b_brightness = 0;
 
-	retval = sscanf(buf, "0x%x %d %d", &led_brightness,
-		&delay_on_time, &delay_off_time);
+	retval = sscanf(buf, "0x%x %d %d", &led_brightness, &delay_on_time,
+			&delay_off_time);
 
 	if (retval == 0) {
 		dev_err(&data->client->dev, "fail to get led_blink value.\n");
@@ -573,17 +574,17 @@ static ssize_t store_ktd2026_led_blink(struct device *dev,
 	led_g_brightness = ((u32)led_brightness & LED_G_MASK) >> LED_G_SHIFT;
 	led_b_brightness = ((u32)led_brightness & LED_B_MASK);
 
-	ktd2026_set_led_blink(LED_R, delay_on_time,
-			delay_off_time, led_r_brightness);
-	ktd2026_set_led_blink(LED_G, delay_on_time,
-			delay_off_time, led_g_brightness);
-	ktd2026_set_led_blink(LED_B, delay_on_time,
-			delay_off_time, led_b_brightness);
+	ktd2026_set_led_blink(LED_R, delay_on_time, delay_off_time,
+			      led_r_brightness);
+	ktd2026_set_led_blink(LED_G, delay_on_time, delay_off_time,
+			      led_g_brightness);
+	ktd2026_set_led_blink(LED_B, delay_on_time, delay_off_time,
+			      led_b_brightness);
 
 	leds_i2c_write_all(data->client);
 
-	printk(KERN_DEBUG "led_blink is called, Color:0x%X Brightness:%i\n",
-			led_brightness, led_dynamic_current);
+	dev_dbg(dev, "led_blink is called, Color:0x%X Brightness:%i\n",
+		led_brightness, led_dynamic_current);
 
 	return count;
 }
@@ -606,30 +607,32 @@ void ktd2026_led_blink(int rgb, int on, int off)
 	led_g_brightness = ((u32)led_brightness & LED_G_MASK) >> LED_G_SHIFT;
 	led_b_brightness = ((u32)led_brightness & LED_B_MASK);
 
-	ktd2026_set_led_blink(LED_R, delay_on_time,
-			delay_off_time, led_r_brightness);
-	ktd2026_set_led_blink(LED_G, delay_on_time,
-			delay_off_time, led_g_brightness);
-	ktd2026_set_led_blink(LED_B, delay_on_time,
-			delay_off_time, led_b_brightness);
+	ktd2026_set_led_blink(LED_R, delay_on_time, delay_off_time,
+			      led_r_brightness);
+	ktd2026_set_led_blink(LED_G, delay_on_time, delay_off_time,
+			      led_g_brightness);
+	ktd2026_set_led_blink(LED_B, delay_on_time, delay_off_time,
+			      led_b_brightness);
 
 	leds_i2c_write_all(b_client);
 
-	printk(KERN_DEBUG "led_blink is called, Color:0x%X Brightness:%i\n",
-		led_brightness, led_dynamic_current);
+	pr_debug("%s: led_blink is called, Color:0x%X Brightness:%i\n",
+		 __func__, led_brightness, led_dynamic_current);
 }
 EXPORT_SYMBOL(ktd2026_led_blink);
 
-static ssize_t store_led_r(struct device *dev,
-	struct device_attribute *devattr, const char *buf, size_t count)
+static ssize_t store_led_r(struct device *dev, struct device_attribute *devattr,
+			   const char *buf, size_t count)
 {
 	struct ktd2026_data *data = dev_get_drvdata(dev);
-	char buff[10] = {0,};
+	char buff[10] = {
+		0,
+	};
 	int cnt, ret;
 	u8 brightness;
 
 	cnt = count;
-	cnt = (buf[cnt-1] == '\n') ? cnt-1 : cnt;
+	cnt = (buf[cnt - 1] == '\n') ? cnt - 1 : cnt;
 	memcpy(buff, buf, cnt);
 	buff[cnt] = '\0';
 
@@ -638,8 +641,8 @@ static ssize_t store_led_r(struct device *dev,
 		dev_err(&data->client->dev, "fail to get brightness.\n");
 		goto out;
 	}
-        
-        printk(KERN_CRIT "%s %d\r\n",__func__,brightness);
+
+	dev_dbg(dev, "%s: %d\n", __func__, brightness);
 
 	if (brightness == 0)
 		ktd2026_leds_on(LED_R, LED_EN_OFF, 0);
@@ -651,16 +654,18 @@ out:
 	return count;
 }
 
-static ssize_t store_led_g(struct device *dev,
-	struct device_attribute *devattr, const char *buf, size_t count)
+static ssize_t store_led_g(struct device *dev, struct device_attribute *devattr,
+			   const char *buf, size_t count)
 {
 	struct ktd2026_data *data = dev_get_drvdata(dev);
-	char buff[10] = {0,};
+	char buff[10] = {
+		0,
+	};
 	int cnt, ret;
 	u8 brightness;
 
 	cnt = count;
-	cnt = (buf[cnt-1] == '\n') ? cnt-1 : cnt;
+	cnt = (buf[cnt - 1] == '\n') ? cnt - 1 : cnt;
 	memcpy(buff, buf, cnt);
 	buff[cnt] = '\0';
 
@@ -670,7 +675,7 @@ static ssize_t store_led_g(struct device *dev,
 		goto out;
 	}
 
-        printk(KERN_CRIT "%s %d\r\n",__func__,brightness);
+	dev_dbg(dev, "%s: %d\n", __func__, brightness);
 	if (brightness == 0)
 		ktd2026_leds_on(LED_G, LED_EN_OFF, 0);
 	else
@@ -681,16 +686,18 @@ out:
 	return count;
 }
 
-static ssize_t store_led_b(struct device *dev,
-	struct device_attribute *devattr, const char *buf, size_t count)
+static ssize_t store_led_b(struct device *dev, struct device_attribute *devattr,
+			   const char *buf, size_t count)
 {
 	struct ktd2026_data *data = dev_get_drvdata(dev);
-	char buff[10] = {0,};
+	char buff[10] = {
+		0,
+	};
 	int cnt, ret;
 	u8 brightness;
 
 	cnt = count;
-	cnt = (buf[cnt-1] == '\n') ? cnt-1 : cnt;
+	cnt = (buf[cnt - 1] == '\n') ? cnt - 1 : cnt;
 	memcpy(buff, buf, cnt);
 	buff[cnt] = '\0';
 
@@ -700,7 +707,7 @@ static ssize_t store_led_b(struct device *dev,
 		goto out;
 	}
 
-        printk(KERN_CRIT "%s %d\r\n",__func__,brightness);
+	dev_dbg(dev, "%s: %d\n", __func__, brightness);
 	if (brightness == 0)
 		ktd2026_leds_on(LED_B, LED_EN_OFF, 0);
 	else
@@ -709,13 +716,12 @@ static ssize_t store_led_b(struct device *dev,
 	leds_i2c_write_all(data->client);
 out:
 	return count;
-
 }
 #endif
 
 /* Added for led common class */
 static ssize_t led_delay_on_show(struct device *dev,
-			struct device_attribute *attr, char *buf)
+				 struct device_attribute *attr, char *buf)
 {
 	struct led_classdev *led_cdev = dev_get_drvdata(dev);
 	struct ktd2026_led *led = cdev_to_led(led_cdev);
@@ -724,8 +730,8 @@ static ssize_t led_delay_on_show(struct device *dev,
 }
 
 static ssize_t led_delay_on_store(struct device *dev,
-			struct device_attribute *attr,
-			const char *buf, size_t len)
+				  struct device_attribute *attr,
+				  const char *buf, size_t len)
 {
 	struct led_classdev *led_cdev = dev_get_drvdata(dev);
 	struct ktd2026_led *led = cdev_to_led(led_cdev);
@@ -739,7 +745,7 @@ static ssize_t led_delay_on_store(struct device *dev,
 }
 
 static ssize_t led_delay_off_show(struct device *dev,
-			struct device_attribute *attr, char *buf)
+				  struct device_attribute *attr, char *buf)
 {
 	struct led_classdev *led_cdev = dev_get_drvdata(dev);
 	struct ktd2026_led *led = cdev_to_led(led_cdev);
@@ -748,8 +754,8 @@ static ssize_t led_delay_off_show(struct device *dev,
 }
 
 static ssize_t led_delay_off_store(struct device *dev,
-			struct device_attribute *attr,
-			const char *buf, size_t len)
+				   struct device_attribute *attr,
+				   const char *buf, size_t len)
 {
 	struct led_classdev *led_cdev = dev_get_drvdata(dev);
 	struct ktd2026_led *led = cdev_to_led(led_cdev);
@@ -764,8 +770,8 @@ static ssize_t led_delay_off_store(struct device *dev,
 }
 
 static ssize_t led_blink_store(struct device *dev,
-			struct device_attribute *attr,
-			const char *buf, size_t len)
+			       struct device_attribute *attr, const char *buf,
+			       size_t len)
 {
 	struct led_classdev *led_cdev = dev_get_drvdata(dev);
 	struct ktd2026_led *led = cdev_to_led(led_cdev);
@@ -779,8 +785,8 @@ static ssize_t led_blink_store(struct device *dev,
 		ktd2026_set_brightness(led_cdev, LED_OFF);
 	}
 
-	led_blink_set(led_cdev,
-		&led->delay_on_time_ms, &led->delay_off_time_ms);
+	led_blink_set(led_cdev, &led->delay_on_time_ms,
+		      &led->delay_off_time_ms);
 
 	return len;
 }
@@ -797,16 +803,11 @@ static DEVICE_ATTR(led_g, 0664, NULL, store_led_g);
 static DEVICE_ATTR(led_b, 0664, NULL, store_led_b);
 /* led_pattern node permission is 664 */
 /* To access sysfs node from other groups */
-static DEVICE_ATTR(led_pattern, 0664, NULL, \
-					store_ktd2026_led_pattern);
-static DEVICE_ATTR(led_blink, 0664, NULL, \
-					store_ktd2026_led_blink);
-static DEVICE_ATTR(led_br_lev, 0664, NULL, \
-					store_ktd2026_led_br_lev);
-static DEVICE_ATTR(led_brightness, 0664, NULL, \
-					store_ktd2026_led_brightness);
-static DEVICE_ATTR(led_lowpower, 0664, NULL, \
-					store_ktd2026_led_lowpower);
+static DEVICE_ATTR(led_pattern, 0664, NULL, store_ktd2026_led_pattern);
+static DEVICE_ATTR(led_blink, 0664, NULL, store_ktd2026_led_blink);
+static DEVICE_ATTR(led_br_lev, 0664, NULL, store_ktd2026_led_br_lev);
+static DEVICE_ATTR(led_brightness, 0664, NULL, store_ktd2026_led_brightness);
+static DEVICE_ATTR(led_lowpower, 0664, NULL, store_ktd2026_led_lowpower);
 
 #endif
 static struct attribute *led_class_attrs[] = {
@@ -839,7 +840,7 @@ static struct attribute_group sec_led_attr_group = {
 #endif
 
 static int initialize_channel(struct i2c_client *client,
-					struct ktd2026_led *led, int channel)
+			      struct ktd2026_led *led, int channel)
 {
 	struct device *dev = &client->dev;
 	int ret;
@@ -858,8 +859,7 @@ static int initialize_channel(struct i2c_client *client,
 		return ret;
 	}
 
-	ret = sysfs_create_group(&led->cdev.dev->kobj,
-			&common_led_attr_group);
+	ret = sysfs_create_group(&led->cdev.dev->kobj, &common_led_attr_group);
 
 	if (ret < 0) {
 		dev_err(dev, "can not register sysfs attribute\n");
@@ -869,22 +869,20 @@ static int initialize_channel(struct i2c_client *client,
 	return 0;
 }
 
-
 static int ktd2026_probe(struct i2c_client *client,
-	const struct i2c_device_id *id)
+			 const struct i2c_device_id *id)
 {
 	struct ktd2026_data *data;
 	int ret, i;
 
-	printk(KERN_CRIT  "%s\n", __func__);
-	printk("%s ++\n", __func__);
 	dev_dbg(&client->adapter->dev, "%s\n", __func__);
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		dev_err(&client->dev, "need I2C_FUNC_I2C.\n");
 		return -ENODEV;
 	}
 
-	if (!i2c_check_functionality(client->adapter, I2C_FUNC_SMBUS_BYTE_DATA)) {
+	if (!i2c_check_functionality(client->adapter,
+				     I2C_FUNC_SMBUS_BYTE_DATA)) {
 		pr_err("%s: i2c functionality check error\n", __func__);
 		dev_err(&client->dev, "need I2C_FUNC_SMBUS_BYTE_DATA.\n");
 		return -EIO;
@@ -894,7 +892,7 @@ static int ktd2026_probe(struct i2c_client *client,
 		data = kzalloc(sizeof(*data), GFP_KERNEL);
 		if (!data) {
 			dev_err(&client->adapter->dev,
-					"failed to allocate driver data.\n");
+				"failed to allocate driver data.\n");
 			return -ENOMEM;
 		}
 	} else
@@ -905,8 +903,8 @@ static int ktd2026_probe(struct i2c_client *client,
 	b_client = client;
 
 	mutex_init(&data->mutex);
-        
-       /* initialize LED */
+
+	/* initialize LED */
 	/* turn off all leds */
 	ktd2026_leds_on(LED_R, LED_EN_OFF, 0);
 	ktd2026_leds_on(LED_G, LED_EN_OFF, 0);
@@ -919,22 +917,22 @@ static int ktd2026_probe(struct i2c_client *client,
 	ktd2026_set_trise_tfall(0, 0, 0);
 
 	for (i = 0; i < MAX_NUM_LEDS; i++) {
-
 		ret = initialize_channel(client, &data->leds[i], i);
 
 		if (ret < 0) {
-			dev_err(&client->adapter->dev, "failure on initialization\n");
+			dev_err(&client->adapter->dev,
+				"failure on initialization\n");
 			goto exit;
 		}
 		INIT_WORK(&(data->leds[i].brightness_work),
-				 ktd2026_led_brightness_work);
+			  ktd2026_led_brightness_work);
 	}
-	
-        /* turn off all leds */ //Tommy
-	global_brightness = 127;		//andy0x, record brightness
-	ktd2026_leds_on(LED_R, LED_EN_ON, 127);//WLED_SINK
-	ktd2026_leds_on(LED_G, LED_EN_ON, 127);//WLED_SINK
-	//ktd2026_leds_on(LED_B, LED_EN_OFF, 0);//GREEN_LED
+
+	/* turn off all leds */ // Tommy
+	global_brightness = 127; // andy0x, record brightness
+	ktd2026_leds_on(LED_R, LED_EN_ON, 127); // WLED_SINK
+	ktd2026_leds_on(LED_G, LED_EN_ON, 127); // WLED_SINK
+	// ktd2026_leds_on(LED_B, LED_EN_OFF, 0);//GREEN_LED
 
 	leds_i2c_write_all(client);
 
@@ -953,7 +951,6 @@ static int ktd2026_probe(struct i2c_client *client,
 		goto exit;
 	}
 #endif
-	printk("%s --\n", __func__);
 	return ret;
 exit:
 	mutex_destroy(&data->mutex);
@@ -961,67 +958,53 @@ exit:
 	return ret;
 }
 
-
 void set_led_green(int brightness)
 {
+	if (b_client == NULL) {
+		printk("ktd2026 driver is not ready\n");
+		return;
+	}
+	if (brightness == 0) {
+		ktd2026_leds_on(LED_B, LED_EN_OFF, 0);
+	} else if (brightness > 0 && brightness < LED_GREEN_DEFAULT_CURRENT) {
+		ktd2026_leds_on(LED_B, LED_EN_ON, LED_GREEN_DEFAULT_CURRENT);
+	} else {
+		ktd2026_leds_on(LED_B, LED_EN_ON, brightness);
+	}
 
-  if(b_client != NULL)
-  {
- 
-    if (brightness==0) {
-      ktd2026_leds_on(LED_B, LED_EN_OFF, 0);
-    } else if (brightness > 0 && brightness < LED_GREEN_DEFAULT_CURRENT) {
-      ktd2026_leds_on(LED_B, LED_EN_ON, LED_GREEN_DEFAULT_CURRENT);
-    } else {
-      ktd2026_leds_on(LED_B, LED_EN_ON, brightness);
-    }
-  
-    leds_i2c_write_all(b_client);
-
-  }
-  else
-  printk("ktd2026 driver is not ready...\r\n");
+	leds_i2c_write_all(b_client);
 }
 EXPORT_SYMBOL(set_led_green);
 
 void set_esd_backlight()
 {
-    if(b_client != NULL)
-    {
-        set_led_backlight(global_brightness);
-        printk("ktd2026 driver is not ready...\r\n");
-    }
-    else
-        printk("ktd2026 driver --set_esd_backlight...\r\n");
+	if (b_client == NULL) {
+		printk("ktd2026 driver is not ready\n");
+		return;
+	}
+	set_led_backlight(global_brightness);
 }
 EXPORT_SYMBOL(set_esd_backlight);
 
-
 void set_led_backlight(int brightness)
 {
+	if (b_client == NULL) {
+		printk("ktd2026 driver is not ready\n");
+		return;
+	}
 
-    if(b_client != NULL)
-    {
-        global_brightness = brightness;		//andy0x, record brightness
+	global_brightness = brightness; // andy0x, record brightness
 
-        if (brightness==0)
-        {
-            ktd2026_leds_on(LED_R, LED_EN_OFF, 0);
-            ktd2026_leds_on(LED_G, LED_EN_OFF, 0);
-        }
-        else
-        {
-            ktd2026_leds_on(LED_R, LED_EN_ON, brightness);
-            ktd2026_leds_on(LED_G, LED_EN_ON, brightness);
-        }
-
-        leds_i2c_write_all(b_client);
-    }
-    else
-        printk("ktd2026 driver is not ready...\r\n");
+	if (brightness == 0) {
+		ktd2026_leds_on(LED_R, LED_EN_OFF, 0);
+		ktd2026_leds_on(LED_G, LED_EN_OFF, 0);
+	} else {
+		ktd2026_leds_on(LED_R, LED_EN_ON, brightness);
+		ktd2026_leds_on(LED_G, LED_EN_ON, brightness);
+	}
+	leds_i2c_write_all(b_client);
 }
 EXPORT_SYMBOL(set_led_backlight);
-
 
 static int ktd2026_remove(struct i2c_client *client)
 {
@@ -1033,7 +1016,7 @@ static int ktd2026_remove(struct i2c_client *client)
 #endif
 	for (i = 0; i < MAX_NUM_LEDS; i++) {
 		sysfs_remove_group(&data->leds[i].cdev.dev->kobj,
-						&common_led_attr_group);
+				   &common_led_attr_group);
 		led_classdev_unregister(&data->leds[i].cdev);
 		cancel_work_sync(&data->leds[i].brightness_work);
 	}
@@ -1043,31 +1026,33 @@ static int ktd2026_remove(struct i2c_client *client)
 }
 
 static struct i2c_device_id ktd2026_id[] = {
-	{"ktd2026", 0},
+	{ "ktd2026", 0 },
 	{},
 };
 
 #ifdef CONFIG_OF
 static struct of_device_id ktd2026_match_table[] = {
-	{ .compatible = "leds,ktd2026",},
-	{ },
+	{
+		.compatible = "leds,ktd2026",
+	},
+	{},
 };
 #else
 #define ktd2026_match_table NULL
 #endif
 
-
 MODULE_DEVICE_TABLE(i2c, ktd2026_id);
 
 static struct i2c_driver ktd2026_i2c_driver = {
-	.driver = {
-		.owner	= THIS_MODULE,
-		.name	= "ktd2026",
-		.of_match_table = ktd2026_match_table,
-	},
-	.id_table = ktd2026_id,
-	.probe = ktd2026_probe,
-	.remove = ktd2026_remove,
+    .driver =
+        {
+            .owner = THIS_MODULE,
+            .name = "ktd2026",
+            .of_match_table = ktd2026_match_table,
+        },
+    .id_table = ktd2026_id,
+    .probe = ktd2026_probe,
+    .remove = ktd2026_remove,
 };
 
 static int __init ktd2026_init(void)

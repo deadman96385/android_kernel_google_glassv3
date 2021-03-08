@@ -83,6 +83,7 @@
 
 &thermal_zones {
 	pm8005_tz {
+		status = "disabled";
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
 		thermal-sensors = <&pm8005_tz>;
@@ -100,7 +101,7 @@
 			pm8005-trip2 {
 				temperature = <145000>;
 				hysteresis = <0>;
-				type = "passive";
+				type = "critical";
 			};
 		};
 	};
