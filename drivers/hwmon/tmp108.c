@@ -1,6 +1,7 @@
 /* Texas Instruments TMP108 SMBus temperature sensor driver
  *
- * Copyright (C) 2016 John Muir <john@jmuir.com>
+ * Copyright (C) 2017 Google, Inc.
+ * Author: muirj
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,6 +27,7 @@
 #include <linux/jiffies.h>
 #include <linux/regmap.h>
 #include <linux/slab.h>
+#include <linux/regulator/consumer.h>
 
 #define	DRIVER_NAME "tmp108"
 
@@ -81,6 +83,7 @@
 
 struct tmp108 {
 	struct regmap *regmap;
+	const char *label;
 	u16 orig_config;
 	unsigned long ready_time;
 };
@@ -196,6 +199,7 @@ static int tmp108_read(struct device *dev, enum hwmon_sensor_types type,
 	return 0;
 }
 
+
 static int tmp108_write(struct device *dev, enum hwmon_sensor_types type,
 			u32 attr, int channel, long temp)
 {
@@ -260,6 +264,8 @@ static int tmp108_write(struct device *dev, enum hwmon_sensor_types type,
 static umode_t tmp108_is_visible(const void *data, enum hwmon_sensor_types type,
 				 u32 attr, int channel)
 {
+	struct tmp108 *tmp108 = (struct tmp108 *)data;
+
 	if (type == hwmon_chip && attr == hwmon_chip_update_interval)
 		return 0644;
 
@@ -276,6 +282,11 @@ static umode_t tmp108_is_visible(const void *data, enum hwmon_sensor_types type,
 	case hwmon_temp_min_hyst:
 	case hwmon_temp_max_hyst:
 		return 0644;
+	case hwmon_temp_label:
+		if (tmp108->label)
+			return 0444;
+		else
+			return 0;
 	default:
 		return 0;
 	}
@@ -293,7 +304,8 @@ static const struct hwmon_channel_info tmp108_chip = {
 
 static u32 tmp108_temp_config[] = {
 	HWMON_T_INPUT | HWMON_T_MAX | HWMON_T_MIN | HWMON_T_MIN_HYST
-		| HWMON_T_MAX_HYST | HWMON_T_MIN_ALARM | HWMON_T_MAX_ALARM,
+		| HWMON_T_MAX_HYST | HWMON_T_MIN_ALARM | HWMON_T_MAX_ALARM
+		| HWMON_T_LABEL,
 	0
 };
 
@@ -354,6 +366,8 @@ static int tmp108_probe(struct i2c_client *client,
 	struct device *dev = &client->dev;
 	struct device *hwmon_dev;
 	struct tmp108 *tmp108;
+        static struct regulator *vdd_tmp;
+        int ret;
 	int err;
 	u32 config;
 
@@ -364,6 +378,20 @@ static int tmp108_probe(struct i2c_client *client,
 		return -ENODEV;
 	}
 
+        if (!vdd_tmp) {
+                vdd_tmp = regulator_get(dev, "vdd_tmp108");
+                if (IS_ERR(vdd_tmp)) {
+                        printk("%s regulator get of vdd_tmp failed\r\n",__func__);
+                        ret = PTR_ERR(vdd_tmp);
+                        vdd_tmp = NULL;
+                        return ret;
+                }
+        }
+        ret = regulator_enable(vdd_tmp);
+        msleep(10); 
+
+
+        dev_err(dev , "%s ++\r\n",__func__);
 	tmp108 = devm_kzalloc(dev, sizeof(*tmp108), GFP_KERNEL);
 	if (!tmp108)
 		return -ENOMEM;
@@ -377,12 +405,20 @@ static int tmp108_probe(struct i2c_client *client,
 		return err;
 	}
 
+	err = of_property_read_string(dev->of_node, "label", &tmp108->label);
+	if (err)
+		tmp108->label = NULL;
+
 	err = regmap_read(tmp108->regmap, TMP108_REG_CONF, &config);
 	if (err < 0) {
 		dev_err(dev, "error reading config register: %d", err);
 		return err;
 	}
 	tmp108->orig_config = config;
+
+        //tommy
+        dev_err(dev,"TMP108_REG_CONF = %x \r\n",config);
+
 
 	/* Only continuous mode is supported. */
 	config &= ~TMP108_CONF_MODE_MASK;
@@ -413,6 +449,7 @@ static int tmp108_probe(struct i2c_client *client,
 							 tmp108,
 							 &tmp108_chip_info,
 							 NULL);
+        dev_err(dev , "%s --\r\n",__func__);
 	return PTR_ERR_OR_ZERO(hwmon_dev);
 }
 
