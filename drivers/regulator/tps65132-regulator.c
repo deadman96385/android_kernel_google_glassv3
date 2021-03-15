@@ -27,6 +27,8 @@
 #include <linux/bitops.h>
 #include <linux/types.h>
 
+#define max_retry 5
+
 struct tps65132_regulator {
 	struct regulator_init_data	*init_data;
 	struct regulator_dev		*rdev;
@@ -83,7 +85,8 @@ struct tps65132_chip {
 
 #define TPS65132_NEG_TABLET_CURR_LIMIT_UA	80000
 #define TPS65132_NEG_SMARTPHONE_CURR_LIMIT_UA	40000
-#define TPS65132_POS_CURR_LIMIT_UA		200000
+//#define TPS65132_POS_CURR_LIMIT_UA		200000
+#define TPS65132_POS_CURR_LIMIT_UA		80000
 
 #define I2C_VOLTAGE_LEVEL	1800000
 
@@ -117,7 +120,7 @@ static int tps65132_regulator_enable(struct regulator_dev *rdev)
 {
 	struct tps65132_regulator *vreg = rdev_get_drvdata(rdev);
 	struct tps65132_chip *chip = vreg->chip;
-	int rc;
+	int rc, i;
 
 	if (chip->en_gpio_lpm)
 		gpio_direction_output(vreg->en_gpio,
@@ -128,22 +131,28 @@ static int tps65132_regulator_enable(struct regulator_dev *rdev)
 	vreg->is_enabled = true;
 
 	if (chip->apps_dischg_cfg_postpone) {
-		rc = regmap_write(chip->regmap, chip->apps_dischg_reg,
-						chip->apps_dischg_val);
-		if (rc) {
-			pr_err("apps_dischg set failed, rc = %d\n", rc);
-			return rc;
+		for ( i = 0; i < max_retry; i++) {
+				rc = regmap_write(chip->regmap, chip->apps_dischg_reg, chip->apps_dischg_val);
+			if (rc) {
+				pr_err("apps_dischg set failed (retry %d), rc = %d\n", i, rc);
+				if ( i == max_retry - 1)    return rc;
+			}
+			else
+				break;
 		}
 		chip->apps_dischg_cfg_postpone = false;
 	}
 
 	if (vreg->vol_set_postpone) {
-		rc = regmap_write(rdev->regmap, vreg->vol_reg,
-					vreg->vol_set_val);
+		for ( i = 0; i < max_retry; i++) {
+			rc = regmap_write(rdev->regmap, vreg->vol_reg, vreg->vol_set_val);
 
-		if (rc) {
-			pr_err("set voltage failed, rc = %d\n", rc);
-			return rc;
+			if (rc) {
+				pr_err("set voltage failed (retry %d), rc = %d\n", i, rc);
+				if ( i == max_retry - 1)    return rc;
+			}
+			else
+				break;
 		}
 		vreg->vol_set_postpone = false;
 	}
@@ -154,7 +163,9 @@ static int tps65132_regulator_enable(struct regulator_dev *rdev)
 static int tps65132_regulator_get_voltage(struct regulator_dev *rdev)
 {
 	struct tps65132_regulator *vreg = rdev_get_drvdata(rdev);
-	int rc, val;
+	// Chip does not support reading voltage from it
+#if 0
+	int rc, val, i;
 
 	if (!rdev->regmap) {
 		pr_err("regmap not found\n");
@@ -163,10 +174,15 @@ static int tps65132_regulator_get_voltage(struct regulator_dev *rdev)
 	if (!vreg->is_enabled)
 		return vreg->curr_uV;
 
-	rc = regmap_write(rdev->regmap, vreg->ctrl_reg, TPS65132_CTRL_READ_DAC);
-	if (rc) {
-		pr_err("failed to write reg %d, rc = %d\n", vreg->ctrl_reg, rc);
-		return rc;
+	for ( i = 0; i < max_retry; i++) {
+		rc = regmap_write(rdev->regmap, vreg->ctrl_reg, TPS65132_CTRL_READ_DAC);
+
+		if (rc) {
+			pr_err("failed to write reg %d (retry %d), rc = %d\n", vreg->ctrl_reg, i, rc);
+			if ( i == max_retry - 1)    return rc;
+		}
+		else
+			break;
 	}
 
 	rc = regmap_read(rdev->regmap, vreg->vol_reg, &val);
@@ -177,7 +193,7 @@ static int tps65132_regulator_get_voltage(struct regulator_dev *rdev)
 		vreg->curr_uV = (val & TPS65132_VOLTAGE_MASK) *
 			TPS65132_VOLTAGE_STEP + TPS65132_VOLTAGE_MIN;
 	}
-
+#endif
 	return vreg->curr_uV;
 }
 
@@ -185,7 +201,7 @@ static int tps65132_regulator_set_voltage(struct regulator_dev *rdev,
 		int min_uV, int max_uV, unsigned *selector)
 {
 	struct tps65132_regulator *vreg = rdev_get_drvdata(rdev);
-	int val, new_uV, rc;
+	int val, new_uV, rc, i;
 
 	if (!rdev->regmap) {
 		pr_err("regmap not found\n");
@@ -204,11 +220,15 @@ static int tps65132_regulator_set_voltage(struct regulator_dev *rdev,
 		vreg->vol_set_val = val;
 		vreg->vol_set_postpone = true;
 	} else {
-		rc = regmap_write(rdev->regmap, vreg->vol_reg, val);
-		if (rc) {
-			pr_err("failed to write reg %d, rc = %d\n",
-						vreg->vol_reg, rc);
-			return rc;
+		for ( i = 0; i < max_retry; i++) {
+			rc = regmap_write(rdev->regmap, vreg->vol_reg, val);
+
+			if (rc) {
+				pr_err("failed to write reg %d (retry %d), rc = %d\n", vreg->vol_reg, i, rc);
+				if ( i == max_retry - 1)    return rc;
+			}
+			else
+				break;
 		}
 	}
 	vreg->curr_uV = new_uV;
@@ -276,7 +296,7 @@ static int tps65132_regulator_gpio_init(struct tps65132_chip *chip)
 			}
 			if (((flags & OF_GPIO_ACTIVE_LOW) && (state == 0)) ||
 				(!(flags & OF_GPIO_ACTIVE_LOW) && (state == 1)))
-				vreg->is_enabled = true;
+				vreg->is_enabled = false;//true;
 		} else {
 			pr_err("gpio %d is invalid for %s EN-pin\n",
 						gpio, vreg->name);
@@ -305,10 +325,16 @@ static int tps65132_regulator_apps_dischg_config(struct tps65132_chip *chip)
 			online = true;
 	}
 	if (online) {
-		rc = regmap_write(chip->regmap, chip->apps_dischg_reg, value);
-		if (rc)
-			pr_err("write reg %d failed, rc = %d\n",
-					chip->apps_dischg_reg, rc);
+		for ( i = 0; i < max_retry; i++) {
+			rc = regmap_write(chip->regmap, chip->apps_dischg_reg, value);
+
+			if (rc) {
+				pr_err("write reg %d failed (retry %d), rc = %d\n", chip->apps_dischg_reg, i, rc);
+				if ( i == max_retry - 1)    return rc;
+			}
+			else
+				break;
+		}
 	} else {
 		chip->apps_dischg_cfg_postpone = true;
 		chip->apps_dischg_val = value;
@@ -576,7 +602,6 @@ static int tps65132_suspend(struct device *dev)
 
 	if (chip->i2c_pwr)
 		rc = regulator_disable(chip->i2c_pwr);
-
 	return rc;
 }
 
