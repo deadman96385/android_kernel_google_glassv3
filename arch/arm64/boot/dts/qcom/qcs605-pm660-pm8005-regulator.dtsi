@@ -92,6 +92,19 @@
 		};
 	};
 
+	rpmh-regulator-smpa6 {
+		compatible = "qcom,rpmh-vrm-regulator";
+		mboxes = <&apps_rsc 0>;
+		qcom,resource-name = "smpa6";
+		pm660_s6: regulator-pm660-s6 {
+			regulator-name = "pm660_s6";
+			qcom,set = <RPMH_REGULATOR_SET_ALL>;
+			regulator-min-microvolt = <1224000>;
+			regulator-max-microvolt = <1352000>;
+			qcom,init-voltage = <1224000>;
+		};
+	};
+
 	/* pm8005 S1 + S4 - VDD_CX supply */
 	rpmh-regulator-cxlvl {
 		compatible = "qcom,rpmh-arc-regulator";

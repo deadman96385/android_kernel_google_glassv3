@@ -10,9 +10,35 @@
  * GNU General Public License for more details.
  */
 
+#include "dsi-panel-sim-video.dtsi"
+#include "dsi-panel-a254-nhd-video.dtsi"
 #include <dt-bindings/clock/mdss-10nm-pll-clk.h>
 
 &soc {
+       dsi_panel_pwr_supply: dsi_panel_pwr_supply {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		qcom,panel-supply-entry@0 {
+			reg = <0>;
+			qcom,supply-name = "vsp";
+			qcom,supply-min-voltage = <4500000>;
+			qcom,supply-max-voltage = <4500000>;
+			qcom,supply-enable-load = <200>;
+			qcom,supply-disable-load = <0>;
+		};
+
+		qcom,panel-supply-entry@1 {
+			reg = <0>;
+			qcom,supply-name = "vsn";
+			qcom,supply-min-voltage = <6000000>;
+			qcom,supply-max-voltage = <6000000>;
+			qcom,supply-enable-load = <40>;
+			qcom,supply-disable-load = <0>;
+		};
+	};
+
+
 	ext_dsi_bridge_display: qcom,dsi-display@0 {
 		compatible = "qcom,dsi-display";
 		label = "ext_dsi_bridge_display";
@@ -34,6 +60,42 @@
 				};
 			};
 		};
+	};
+
+	dsi_sim_vid_display: qcom,dsi-display@1 {
+		compatible = "qcom,dsi-display";
+		label = "dsi_sim_vid_display";
+		qcom,display-type = "primary";
+
+		qcom,dsi-ctrl = <&mdss_dsi0>;
+		qcom,dsi-phy = <&mdss_dsi_phy0>;
+		clocks = <&mdss_dsi0_pll BYTECLK_MUX_0_CLK>,
+			<&mdss_dsi0_pll PCLK_MUX_0_CLK>;
+		clock-names = "src_byte_clk", "src_pixel_clk";
+
+		pinctrl-names = "panel_active", "panel_suspend";
+		pinctrl-0 = <&sde_dsi_active>;
+		pinctrl-1 = <&sde_dsi_suspend>;
+
+		qcom,dsi-panel = <&dsi_sim_vid>;
+	};
+
+	dsi_a254_video_display: qcom,dsi-display@2 {
+		compatible = "qcom,dsi-display";
+		label = "dsi_a254_nhd_video_display";
+		qcom,display-type = "primary";
+
+		qcom,dsi-ctrl = <&mdss_dsi0>;
+		qcom,dsi-phy = <&mdss_dsi_phy0>;
+		clocks = <&mdss_dsi0_pll BYTECLK_MUX_0_CLK>,
+			<&mdss_dsi0_pll PCLK_MUX_0_CLK>;
+		clock-names = "src_byte_clk", "src_pixel_clk";
+
+		pinctrl-names = "panel_active", "panel_suspend";
+		pinctrl-0 = <&sde_dsi_active>;
+		pinctrl-1 = <&sde_dsi_suspend>;
+
+		qcom,dsi-panel = <&dsi_a254_nhd_video>;
 	};
 
 	sde_wb: qcom,wb-display@0 {
@@ -71,3 +133,25 @@
 	vdda-0p9-supply = <&pm660_l6>;
 };
 
+&dsi_sim_vid {
+	qcom,mdss-dsi-t-clk-post = <0x0d>;
+	qcom,mdss-dsi-t-clk-pre = <0x2d>;
+	qcom,mdss-dsi-display-timings {
+		timing@0{
+			qcom,mdss-dsi-panel-phy-timings = [00 1c 07 07 23 21 07
+				07 05 03 04 00];
+			qcom,display-topology = <1 0 1>,
+						<2 0 1>;
+			qcom,default-topology-index = <0>;
+		};
+	};
+};
+
+&dsi_a254_nhd_video {
+	qcom,mdss-dsi-display-timings {
+		timing@0{
+			qcom,display-topology = <1 0 1>;
+			qcom,default-topology-index = <0>;
+		};
+	};
+};
