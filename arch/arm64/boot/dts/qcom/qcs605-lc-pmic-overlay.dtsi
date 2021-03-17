@@ -19,6 +19,8 @@
 
 		qcom,pmic-revid = <&pm660_revid>;
 
+		qcom,hvdcp-disable;
+
 		io-channels = <&pm660_rradc 8>,
 			      <&pm660_rradc 10>,
 			      <&pm660_rradc 3>,
@@ -33,8 +35,7 @@
 		dpdm-supply = <&qusb_phy0>;
 
 		qcom,thermal-mitigation
-				= <3000000 2500000 2000000 1500000
-					1000000 500000>;
+				= <1440000 500000 250000 0>;
 		qcom,auto-recharge-soc;
 
 		qcom,chgr@1000 {
@@ -270,3 +271,59 @@
 				<&pm660_charger>, <&pm660_charger>;
 	vbus_dwc3-supply = <&smb2_vbus>;
 };
+
+&pm660_charger {
+	qcom,step-charging-enable;
+	qcom,sw-jeita-enable;
+};
+
+&vendor {
+	mtp_batterydata: qcom,battery-data {
+		qcom,batt-id-range-pct = <15>;
+		#include "3507855_Quanta_A65_825mAh_averaged_MasterSlave_Aug14th2018_PM670.dtsi"
+	};
+};
+
+&pm660_fg {
+	qcom,fg-force-load-profile;
+	qcom,battery-data = <&mtp_batterydata>;
+	qcom,fg-jeita-thresholds = <0 10 45 60>;
+};
+
+&thermal_zones {
+	xo-therm-step {
+		trips {
+			batt_trip1: batt-trip1 {
+				temperature = <41500>;
+				hysteresis = <1500>;
+				type = "passive";
+			};
+			batt_trip2: batt-trip2 {
+				temperature = <42500>;
+				hysteresis = <1500>;
+				type = "passive";
+			};
+			batt_trip3: batt-trip3 {
+				temperature = <43500>;
+				hysteresis = <1500>;
+				type = "passive";
+			};
+		};
+
+		cooling-maps {
+			battery_lvl1 {
+				trip = <&batt_trip1>;
+				cooling-device = <&pm660_charger 1 1>;
+			};
+			battery_lvl2 {
+				trip = <&batt_trip2>;
+				cooling-device = <&pm660_charger 2 2>;
+			};
+			battery_lvl3 {
+				trip = <&batt_trip3>;
+				cooling-device = <&pm660_charger 3 3>;
+			};
+		};
+	};
+};
+

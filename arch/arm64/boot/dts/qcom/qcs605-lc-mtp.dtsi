@@ -83,5 +83,5 @@
 
 	cd-gpios = <&tlmm 116 0x1>;
 
-	status = "ok";
+	status = "disabled";
 };
