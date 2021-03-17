@@ -12,20 +12,22 @@
 
 qcom,kayo_1300mah {
 	/* #kayo_1300mah_averaged_masterslave_feb26th2018 */
-	qcom,max-voltage-uv = <4200000>;
+	qcom,max-voltage-uv = <4400000>;
 	qcom,nom-batt-capacity-mah = <1300>;
 	qcom,batt-id-kohm = <100>;
-	qcom,jeita-fcc-ranges = <0   100  975000
-				101  450  1300000
-				451  600  1105000>;
-	qcom,jeita-fv-ranges = <0   100  4000000
-				101 200  4100000
-				201 450  4200000
-				451 500  4100000
-				501 600  4000000>;
-	qcom,step-chg-ranges = <3600000  4200000  2600000>;
+	qcom,fastchg-current-ma = <1440>;
+	qcom,jeita-fcc-ranges = <0 100 80000
+				101 230 800000
+				231 450 1440000
+				451 600 400000>;
+	qcom,jeita-fv-ranges = <0 100 4400000
+				101 450 4400000
+				451 600 4100000>;
+	qcom,step-chg-ranges = <2600000 3000000 144000
+				3001000 4200000 1440000
+				4201000 4400000 800000>;
 	qcom,battery-beta = <4250>;
-	qcom,fg-cc-cv-threshold-mv = <4190>;
+	qcom,fg-cc-cv-threshold-mv = <4400>;
 	qcom,battery-type = "kayo_1300mah_averaged_masterslave_feb26th2018";
 	qcom,checksum = <0xBFF4>;
 	qcom,gui-version = "PM660GUI - 0.0.0.45";

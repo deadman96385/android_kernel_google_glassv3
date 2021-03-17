@@ -30,7 +30,7 @@
 				< 1209660 MHZ_TO_MBPS( 451, 4) >,
 				< 1612800 MHZ_TO_MBPS( 547, 4) >,
 				< 1708000 MHZ_TO_MBPS( 768, 4) >;
-			cpu-to-dev-map-2 =
+			cpu-to-dev-map-6 =
 				< 1132800 MHZ_TO_MBPS( 300, 4) >,
 				< 1363200 MHZ_TO_MBPS( 547, 4) >,
 				< 1747200 MHZ_TO_MBPS( 768, 4) >,
