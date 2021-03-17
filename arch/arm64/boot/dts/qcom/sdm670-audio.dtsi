@@ -241,6 +241,20 @@
 		compatible = "qcom,msm-cpe-lsm";
 		qcom,msm-cpe-lsm-id = <3>;
 	};
+
+	wcd_vout_1p8: wcd_vout_1p8 {
+		compatible = "regulator-fixed";
+		status = "disabled";
+		regulator-name = "wcd_vout_1p8";
+		gpio = <&tlmm 122 0>;
+		enable-active-high;
+		regulator-boot-on;
+		regulator-always-on;
+
+		regulator-enable-ramp-delay = <1600>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&wcd_vout_1p8_default>;
+	};
 };
 
 &slim_aud {

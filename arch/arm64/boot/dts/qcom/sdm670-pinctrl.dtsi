@@ -65,6 +65,17 @@
 				 */
 				drive-strength = <8>;
 				output-high; /* active low reset */
+
+		cyt_gpio_active: cyt_gpio_active {
+			mux {
+				pins = "gpio99", "gpio125";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio99", "gpio125";
+				drive-strength = <8>;
+				bias-pull-up;
 			};
 		};
 
@@ -1652,6 +1663,22 @@
 					pins = "gpio94";
 					drive-strength = <8>; /* 8 mA */
 					bias-pull-down; /* pull down */
+					output-low;
+				};
+			};
+		};
+
+		wcd_vout_1p8_en {
+			wcd_vout_1p8_default: wcd_vout_1p8_default {
+				mux {
+					pins = "gpio122";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio122";
+					drive-strength = <8>; /* 8 mA */
+					bias-pull-down; /* pull down */
 					output-high;
 				};
 			};
@@ -1910,12 +1937,12 @@
 		pmx_sde_te {
 			sde_te_active: sde_te_active {
 				mux {
-					pins = "gpio10";
+					pins = "gpio44";
 					function = "mdp_vsync";
 				};
 
 				config {
-					pins = "gpio10";
+					pins = "gpio44";
 					drive-strength = <2>;   /* 2 mA */
 					bias-pull-down;         /* PULL DOWN */
 				};
@@ -1923,12 +1950,12 @@
 
 			sde_te_suspend: sde_te_suspend {
 				mux {
-					pins = "gpio10";
+					pins = "gpio44";
 					function = "mdp_vsync";
 				};
 
 				config {
-					pins = "gpio10";
+					pins = "gpio44";
 					drive-strength = <2>;   /* 2 mA */
 					bias-pull-down;         /* PULL DOWN */
 				};
@@ -2131,12 +2158,12 @@
 		cam_sensor_front_active: cam_sensor_front_active {
 			/* RESET  */
 			mux {
-				pins = "gpio9";
+				pins = "gpio140";
 				function = "gpio";
 			};
 
 			config {
-				pins = "gpio9";
+				pins = "gpio140";
 				bias-disable; /* No PULL */
 				drive-strength = <2>; /* 2 MA */
 			};
@@ -2145,12 +2172,12 @@
 		cam_sensor_front_suspend: cam_sensor_front_suspend {
 			/* RESET */
 			mux {
-				pins = "gpio9";
+				pins = "gpio140";
 				function = "gpio";
 			};
 
 			config {
-				pins = "gpio9";
+				pins = "gpio140";
 				bias-pull-down; /* PULL DOWN */
 				drive-strength = <2>; /* 2 MA */
 				output-low;
@@ -2251,6 +2278,42 @@
 			config {
 				pins = "gpio5";
 				bias-disable;
+				input-enable;
+			};
+		};
+
+		fpga_cdone_pins_default: fpga_cdone_pins_default {
+			mux {
+				pins = "gpio9";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio9";
+				bias-disable;
+				input-enable;
+			};
+		};
+
+		borad_id_pins_default: borad_id_pins_default {
+			mux {
+				pins = "gpio89";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio89";
+				bias-pull-up;
+				input-enable;
+			};
+		};
+		
+		disp_id_pin_default: disp_id_pin_default {
+			mux {
+				pins = "gpio95";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio95";
+				bias-pull-down;
 				input-enable;
 			};
 		};

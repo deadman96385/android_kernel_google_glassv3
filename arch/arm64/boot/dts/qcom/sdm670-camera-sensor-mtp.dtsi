@@ -79,6 +79,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&camera_rear_dvdd_en_default>;
 		vin-supply = <&pm660_s6>;
+		status = "disabled";
 	};
 
 	camera_vio_ldo: gpio-regulator@3 {
