@@ -1151,7 +1151,7 @@ void atmel_app_delay_wq_task(struct work_struct *work)
 }
 
 void atmel_app_notify_hinge_status(void) {
-	uint8_t hinge_status = 0;
+	uint8_t hinge_status = HINGE_UNKNOWN;
 	atmel_app_get_data_8bit(ATMEL_CMD_GET_HINGE_STATUS, &hinge_status);
 	if (atmel_app_dev->hinge_status != hinge_status) {
 		atmel_app_dev->hinge_status = hinge_status;
@@ -1458,6 +1458,7 @@ static void atmel_app_mcu_init(void)
 				__func__, __LINE__, atmel_app_dev->hinge_func);
 	}
 
+	atmel_app_dev->hinge_status = HINGE_UNKNOWN;
 }
 
 #ifdef CONFIG_FB
